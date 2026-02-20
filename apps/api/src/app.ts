@@ -20,12 +20,30 @@ app.use(morgan('dev'));
 // ── Health ─────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
-app.get('/api/debug-env', (_, res) => res.json({
-    hasDbUrl: !!process.env.DATABASE_URL,
-    dbUrlPrefix: process.env.DATABASE_URL?.substring(0, 40) + '...',
-    hasDirectUrl: !!process.env.DIRECT_URL,
-    nodeEnv: process.env.NODE_ENV,
-}));
+app.get('/api/debug-env', async (_, res) => {
+    const { PrismaClient } = require('@prisma/client');
+    const testPrisma = new PrismaClient();
+    try {
+        const result = await testPrisma.$queryRaw`SELECT 1 as test`;
+        return res.json({
+            dbConnected: true,
+            result,
+            dbUrlPrefix: process.env.DATABASE_URL?.substring(0, 50) + '...',
+            dbUrlLength: process.env.DATABASE_URL?.length,
+        });
+    } catch (error: any) {
+        return res.json({
+            dbConnected: false,
+            error: error.message,
+            errorCode: error.code,
+            errorName: error.constructor?.name,
+            dbUrlPrefix: process.env.DATABASE_URL?.substring(0, 50) + '...',
+            dbUrlLength: process.env.DATABASE_URL?.length,
+        });
+    } finally {
+        await testPrisma.$disconnect();
+    }
+});
 
 // ── Public Routes ──────────────────────────────────────
 app.use('/api/v1/auth', authRoutes);
