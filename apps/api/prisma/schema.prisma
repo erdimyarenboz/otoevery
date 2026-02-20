@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USERS ──────────────────────────────────────────────
+// Unified user table for all 4 roles
+model User {
+  id              String   @id @default(uuid())
+  email           String?  @unique
+  plateNumber     String?  @unique  // For DRIVER login (plate + password)
+  password        String
+  firstName       String
+  lastName        String
+  phone           String?
+  role            String   // SUPER_ADMIN | COMPANY_MANAGER | DRIVER | SERVICE_CENTER
+  isActive        Boolean  @default(true)
+
+  // Relations
+  companyId       String?
+  company         Company?        @relation(fields: [companyId], references: [id])
+  serviceCenterId String?
+  serviceCenter   ServiceCenter?  @relation(fields: [serviceCenterId], references: [id])
+  vehicleId       String?         // For DRIVER — assigned vehicle
+  vehicle         Vehicle?        @relation(fields: [vehicleId], references: [id])
+
+  // Transactions made by this user
+  transactions    Transaction[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([role])
+  @@index([companyId])
+  @@index([serviceCenterId])
+}
+
+// ─── COMPANIES ──────────────────────────────────────────
+model Company {
+  id             String   @id @default(uuid())
+  name           String
+  slug           String   @unique
+  address        String?
+  contactEmail   String?
+  contactPhone   String?
+  logoUrl        String?
+  creditBalance  Float    @default(0) // Loaded by Super Admin
+  isActive       Boolean  @default(true)
+
+  // Relations
+  vehicles           Vehicle[]
+  users              User[]
+  agreements         Agreement[]
+  creditTransactions CreditTransaction[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── VEHICLES ───────────────────────────────────────────
+model Vehicle {
+  id             String   @id @default(uuid())
+  plate          String   @unique
+  brand          String?
+  model          String?
+  year           Int?
+  color          String?
+  fuelType       String?
+  currentKm      Int      @default(0)
+  creditBalance  Float    @default(0) // Allocated by Company Manager
+  status         String   @default("active")  // active | passive | maintenance | sold
+  notes          String?
+
+  // Relations
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id])
+  drivers      User[]
+  transactions Transaction[]
+  penalties    Penalty[]
+  creditTransactions CreditTransaction[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+}
+
+// ─── SERVICE CENTERS ────────────────────────────────────
+model ServiceCenter {
+  id           String   @id @default(uuid())
+  name         String
+  address      String?
+  type         String   @default("both") // wash | maintenance | tire | both
+  latitude     Float?
+  longitude    Float?
+  workingHours String?  // e.g. "08:00 - 20:00"
+  contactEmail String?
+  phone        String?
+  logoUrl      String?
+  description  String?  // ne üzerine çalıştığı
+  iban         String?  // TR12 3456 7890 1234 5678 9012 34
+  bankAccountName String?  // Alıcı Adı Soyadı
+  bankName     String?  // Banka adı
+  paymentDay   Int?     // Ödeme günü (ayın kaçı) — Super Admin belirler
+  isActive     Boolean  @default(true)
+
+  // Relations
+  users              User[]
+  agreements         Agreement[]
+  transactions       Transaction[]
+  qrCodes            QrCode[]
+  payouts            Payout[]
+  creditTransactions CreditTransaction[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── PAYOUTS (Hakediş) ─────────────────────────────────
+// Tracks when super admin pays out accrued earnings to a service center
+model Payout {
+  id              String   @id @default(uuid())
+  serviceCenterId String
+  serviceCenter   ServiceCenter @relation(fields: [serviceCenterId], references: [id])
+
+  amount          Float    // Amount paid out
+  paidAt          DateTime @default(now())
+  notes           String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([serviceCenterId])
+  @@index([paidAt])
+}
+
+// ─── AGREEMENTS ─────────────────────────────────────────
+// Links a Company with a ServiceCenter
+model Agreement {
+  id              String   @id @default(uuid())
+  companyId       String
+  company         Company       @relation(fields: [companyId], references: [id])
+  serviceCenterId String
+  serviceCenter   ServiceCenter @relation(fields: [serviceCenterId], references: [id])
+
+  startDate       DateTime
+  endDate         DateTime?
+  monthlyLimit    Float?   // max monthly spend
+  discountRate    Float    @default(0) // percentage discount
+  isActive        Boolean  @default(true)
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([serviceCenterId])
+}
+
+// ─── TRANSACTIONS ───────────────────────────────────────
+// Every wash, maintenance, or penalty payment
+model Transaction {
+  id              String   @id @default(uuid())
+  type            String   // wash | maintenance | penalty
+  amount          Float
+  description     String?
+  status          String   @default("completed") // pending | completed | cancelled | refunded
+  qrPaymentRef    String?  // QR payment reference
+
+  // Relations
+  vehicleId       String
+  vehicle         Vehicle       @relation(fields: [vehicleId], references: [id])
+  serviceCenterId String?
+  serviceCenter   ServiceCenter? @relation(fields: [serviceCenterId], references: [id])
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+
+  transactionDate DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([serviceCenterId])
+  @@index([type])
+  @@index([transactionDate])
+}
+
+// ─── PENALTIES ──────────────────────────────────────────
+model Penalty {
+  id           String   @id @default(uuid())
+  vehicleId    String
+  vehicle      Vehicle  @relation(fields: [vehicleId], references: [id])
+
+  amount       Float
+  penaltyDate  DateTime
+  description  String?
+  location     String?
+  status       String   @default("unpaid") // unpaid | paid | appealed
+  paidAt       DateTime?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([status])
+}
+
+// ─── QR CODES ───────────────────────────────────────────
+model QrCode {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  serviceCenterId String
+  serviceCenter   ServiceCenter @relation(fields: [serviceCenterId], references: [id])
+
+  serviceType     String   // wash | maintenance | wash_premium | oil_change etc.
+  amount          Float
+  label           String   // Human-readable label, e.g. "Dış Yıkama"
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([serviceCenterId])
+}
+
+// ─── CREDIT TRANSACTIONS ────────────────────────────────
+// Tracks all credit movements: load (admin→company), allocate (company→vehicle), spend (vehicle→service)
+model CreditTransaction {
+  id              String   @id @default(uuid())
+  type            String   // load | allocate | spend
+  amount          Float
+  description     String?
+
+  // For 'load': admin loads to company
+  companyId       String?
+  company         Company?       @relation(fields: [companyId], references: [id])
+
+  // For 'allocate': company distributes to vehicle
+  // For 'spend': vehicle uses at service center
+  vehicleId       String?
+  vehicle         Vehicle?       @relation(fields: [vehicleId], references: [id])
+
+  // For 'spend': which service center received the payment
+  serviceCenterId String?
+  serviceCenter   ServiceCenter? @relation(fields: [serviceCenterId], references: [id])
+
+  // For 'spend': what service type was used (wash | maintenance | tire)
+  serviceType     String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([companyId])
+  @@index([vehicleId])
+  @@index([serviceCenterId])
+  @@index([type])
+  @@index([createdAt])
+}
