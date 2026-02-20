@@ -20,6 +20,12 @@ app.use(morgan('dev'));
 // ── Health ─────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+app.get('/api/debug-env', (_, res) => res.json({
+    hasDbUrl: !!process.env.DATABASE_URL,
+    dbUrlPrefix: process.env.DATABASE_URL?.substring(0, 40) + '...',
+    hasDirectUrl: !!process.env.DIRECT_URL,
+    nodeEnv: process.env.NODE_ENV,
+}));
 
 // ── Public Routes ──────────────────────────────────────
 app.use('/api/v1/auth', authRoutes);
