@@ -1,5 +1,8 @@
 {
     "version": 2,
+    "regions": [
+        "fra1"
+    ],
     "buildCommand": "npx prisma generate",
     "outputDirectory": ".",
     "installCommand": "npm install",
