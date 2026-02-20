@@ -41,7 +41,7 @@ export default function AdminCreditsPage() {
         setSubmitting(false);
 
         if (res.success) {
-            setMessage(res.message);
+            setMessage(res.message || 'İşlem tamamlandı');
             setAmount('');
             setSelectedCompany('');
             fetchData();
