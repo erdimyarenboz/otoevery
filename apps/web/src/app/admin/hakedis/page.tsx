@@ -28,8 +28,8 @@ export default function AdminHakedisPage() {
     const [loading, setLoading] = useState(true);
     const [paying, setPaying] = useState<string | null>(null); // id being paid
 
-    const fetchData = useCallback(() => {
-        setLoading(true);
+    const fetchData = useCallback((silent = false) => {
+        if (!silent) setLoading(true);
         api.get('/api/v1/admin/hakedis').then(r => {
             if (r.success) setItems(r.data || []);
             setLoading(false);
@@ -38,21 +38,28 @@ export default function AdminHakedisPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    const handlePay = async (id: string, name: string, amount: number) => {
+    const handlePay = async (e: React.MouseEvent, id: string, name: string, amount: number) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         if (!confirm(`"${name}" servis merkezine ₺${amount.toLocaleString('tr-TR')} hakediş ödemesi yapılacak.\n\nOnaylıyor musunuz?`)) return;
+
         setPaying(id);
-        const res = await api.post(`/api/v1/admin/hakedis/${id}/pay`, {});
-        if (res.success) {
-            fetchData(); // refresh all data
+        try {
+            const res = await api.post(`/api/v1/admin/hakedis/${id}/pay`, {});
+            if (res.success) {
+                await fetchData(true); // silent refresh
+            }
+        } finally {
+            setPaying(null);
         }
-        setPaying(null);
     };
 
     const totalHakedis = items.reduce((sum, i) => sum + i.hakedis, 0);
     const totalRevenue = items.reduce((sum, i) => sum + i.totalRevenue, 0);
     const centersWithHakedis = items.filter(i => i.hakedis > 0).length;
 
-    if (loading) {
+    if (loading && items.length === 0) {
         return <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><div className="spinner" style={{ width: 32, height: 32, borderWidth: 3, color: 'var(--primary)' }} /></div>;
     }
 
@@ -136,8 +143,9 @@ export default function AdminHakedisPage() {
                                     <td style={{ textAlign: 'center', padding: '14px 16px' }}>
                                         {item.hakedis > 0 ? (
                                             <button
+                                                type="button"
                                                 className="btn btn-primary"
-                                                onClick={() => handlePay(item.id, item.name, item.hakedis)}
+                                                onClick={(e) => handlePay(e, item.id, item.name, item.hakedis)}
                                                 disabled={paying === item.id}
                                                 style={{ fontSize: 13, padding: '8px 16px' }}
                                             >
