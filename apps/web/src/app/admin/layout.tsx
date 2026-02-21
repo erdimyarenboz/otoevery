@@ -6,11 +6,11 @@ const NAV_ITEMS = [
     { label: 'Genel Bakış', icon: '📊', href: '/admin' },
     { label: 'Şirketler', icon: '🏢', href: '/admin/companies' },
     { label: 'Servis Merkezleri', icon: '🔧', href: '/admin/service-centers' },
-    { label: 'Servis Yönetimi', icon: '🏦', href: '/admin/service-management' },
+    { label: 'Kullanıcılar', icon: '👥', href: '/admin/users' },
+    { label: 'Bireysel Kullanıcılar', icon: '🧑', href: '/admin/individual-users' },
     { label: 'Krediler', icon: '💳', href: '/admin/credits' },
     { label: 'Hakediş', icon: '💰', href: '/admin/hakedis' },
-    { label: 'Kullanıcılar', icon: '👥', href: '/admin/users' },
-    { label: 'Anlaşmalar', icon: '📋', href: '/admin/agreements' },
+    { label: 'Servis Yönetimi', icon: '🏦', href: '/admin/service-management' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

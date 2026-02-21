@@ -12,7 +12,7 @@ const ROLE_REDIRECTS: Record<string, string> = {
     SERVICE_CENTER: '/service',
 };
 
-export default function CompanyLoginPage() {
+export default function ServiceLoginPage() {
     const router = useRouter();
     const { login } = useAuth();
     const [email, setEmail] = useState('');
@@ -28,7 +28,7 @@ export default function CompanyLoginPage() {
         const res = await login({ email, password });
         if (res.success) {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
-            router.push(ROLE_REDIRECTS[user.role] || '/company');
+            router.push(ROLE_REDIRECTS[user.role] || '/service');
         } else {
             setError(res.message || 'E-posta veya şifre hatalı');
         }
@@ -37,20 +37,21 @@ export default function CompanyLoginPage() {
 
     return (
         <div className="auth-page">
-            <div className="auth-glow-1" />
+            <div className="auth-glow-1" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%)' }} />
             <div className="auth-glow-2" />
 
             <div className="auth-card">
-                {/* Logo */}
                 <Link href="/" className="auth-logo">
-                    <div className="auth-logo-icon">OE</div>
+                    <div className="auth-logo-icon" style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)' }}>OE</div>
                     <span className="auth-logo-text">OtoEvery</span>
                 </Link>
 
                 <div className="auth-header">
-                    <div className="auth-type-badge">🏢 Şirket Girişi</div>
-                    <h1 className="auth-title">Hoş Geldiniz</h1>
-                    <p className="auth-subtitle">Şirket panelinize giriş yapın</p>
+                    <div className="auth-type-badge" style={{ background: 'rgba(6,182,212,0.1)', borderColor: 'rgba(6,182,212,0.2)', color: '#22d3ee' }}>
+                        🔧 Oto Servis Girişi
+                    </div>
+                    <h1 className="auth-title">Servis Paneli</h1>
+                    <p className="auth-subtitle">Anlaşmalı servis hesabınıza girin</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="auth-form">
@@ -58,7 +59,7 @@ export default function CompanyLoginPage() {
                         <label>E-posta Adresi</label>
                         <input
                             type="email"
-                            placeholder="ad@sirketiniz.com"
+                            placeholder="servis@isletmeniz.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -84,20 +85,21 @@ export default function CompanyLoginPage() {
 
                     {error && <div className="auth-error">{error}</div>}
 
-                    <button type="submit" className="auth-btn" disabled={loading}>
-                        {loading ? 'Giriş yapılıyor...' : 'Giriş Yap →'}
+                    <button
+                        type="submit"
+                        className="auth-btn"
+                        style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', boxShadow: '0 4px 16px rgba(6,182,212,0.3)' }}
+                        disabled={loading}
+                    >
+                        {loading ? 'Giriş yapılıyor...' : 'Servis Paneline Gir →'}
                     </button>
                 </form>
 
                 <div className="auth-divider"><span>diğer giriş seçenekleri</span></div>
 
                 <div className="auth-other-logins">
-                    <Link href="/login/service" className="auth-link-btn">
-                        🔧 Oto Servis Girişi
-                    </Link>
-                    <Link href="/login/driver" className="auth-link-btn">
-                        🚗 Sürücü Girişi (Plaka)
-                    </Link>
+                    <Link href="/login" className="auth-link-btn">🏢 Şirket Girişi</Link>
+                    <Link href="/login/driver" className="auth-link-btn">🚗 Sürücü Girişi (Plaka)</Link>
                 </div>
 
                 <Link href="/" className="auth-back">← Ana Sayfaya Dön</Link>
@@ -110,14 +112,9 @@ export default function CompanyLoginPage() {
 
 const authStyles = `
 .auth-page {
-  min-height: 100vh;
-  background: #080b14;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  position: relative;
-  overflow: hidden;
+  min-height: 100vh; background: #080b14;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; position: relative; overflow: hidden;
 }
 .auth-glow-1 {
   position: fixed; top: -200px; left: -200px;
@@ -132,14 +129,10 @@ const authStyles = `
   pointer-events: none;
 }
 .auth-card {
-  width: 100%;
-  max-width: 420px;
-  background: #1a1d27;
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 20px;
-  padding: 40px;
-  position: relative;
-  z-index: 1;
+  width: 100%; max-width: 420px;
+  background: #1a1d27; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 20px; padding: 40px;
+  position: relative; z-index: 1;
 }
 .auth-logo {
   display: flex; align-items: center; gap: 10px;
@@ -148,8 +141,7 @@ const authStyles = `
 .auth-logo-icon {
   width: 38px; height: 38px;
   background: linear-gradient(135deg, #6366f1, #06b6d4);
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 900; color: white;
 }
 .auth-logo-text {
@@ -162,27 +154,19 @@ const authStyles = `
 .auth-type-badge {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 12px;
-  background: rgba(99,102,241,0.1);
-  border: 1px solid rgba(99,102,241,0.2);
-  border-radius: 100px;
-  font-size: 12px; font-weight: 600; color: #818cf8;
+  background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+  border-radius: 100px; font-size: 12px; font-weight: 600; color: #818cf8;
   margin-bottom: 12px;
 }
-.auth-title {
-  font-size: 26px; font-weight: 800; color: #f1f5f9;
-  letter-spacing: -0.03em; margin-bottom: 4px;
-}
+.auth-title { font-size: 26px; font-weight: 800; color: #f1f5f9; letter-spacing: -0.03em; margin-bottom: 4px; }
 .auth-subtitle { font-size: 14px; color: #64748b; }
 .auth-form { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
 .auth-field { display: flex; flex-direction: column; gap: 6px; }
 .auth-field label { font-size: 13px; font-weight: 500; color: #94a3b8; }
 .auth-field input {
-  padding: 12px 16px;
-  background: #13151e;
-  border: 1px solid rgba(255,255,255,0.09);
-  border-radius: 10px;
-  color: #f1f5f9;
-  font-size: 14px; font-family: inherit;
+  padding: 12px 16px; background: #13151e;
+  border: 1px solid rgba(255,255,255,0.09); border-radius: 10px;
+  color: #f1f5f9; font-size: 14px; font-family: inherit;
   outline: none; transition: all 0.2s;
 }
 .auth-field input:focus {
@@ -194,29 +178,22 @@ const authStyles = `
 .auth-pw-wrap input { width: 100%; padding-right: 44px; }
 .auth-pw-wrap button {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.5;
-  color: #94a3b8;
+  background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.5; color: #94a3b8;
 }
 .auth-error {
-  padding: 10px 14px;
-  background: rgba(239,68,68,0.08);
-  border: 1px solid rgba(239,68,68,0.2);
-  border-radius: 8px;
+  padding: 10px 14px; background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.2); border-radius: 8px;
   color: #f87171; font-size: 13px;
 }
 .auth-btn {
-  padding: 14px;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  padding: 14px; background: linear-gradient(135deg, #6366f1, #4f46e5);
   color: white; border: none; border-radius: 10px;
-  font-size: 15px; font-weight: 700; cursor: pointer;
-  font-family: inherit; transition: all 0.2s;
-  box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+  font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: all 0.2s; box-shadow: 0 4px 16px rgba(99,102,241,0.3);
 }
-.auth-btn:hover { background: linear-gradient(135deg, #4f46e5, #4338ca); transform: translateY(-1px); }
+.auth-btn:hover { transform: translateY(-1px); }
 .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.auth-divider {
-  text-align: center; position: relative; margin-bottom: 16px;
-}
+.auth-divider { text-align: center; position: relative; margin-bottom: 16px; }
 .auth-divider::before {
   content: ''; position: absolute; top: 50%; left: 0; right: 0;
   height: 1px; background: rgba(255,255,255,0.06);
@@ -225,22 +202,14 @@ const authStyles = `
   position: relative; background: #1a1d27; padding: 0 12px;
   font-size: 12px; color: #334155;
 }
-.auth-other-logins {
-  display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px;
-}
+.auth-other-logins { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
 .auth-link-btn {
   display: block; padding: 12px 16px; text-align: center;
   background: #13151e; border: 1px solid rgba(255,255,255,0.07);
   border-radius: 10px; color: #94a3b8; font-size: 14px; font-weight: 500;
   text-decoration: none; transition: all 0.2s;
 }
-.auth-link-btn:hover {
-  border-color: rgba(255,255,255,0.15); color: #f1f5f9;
-  background: #1e2130;
-}
-.auth-back {
-  display: block; text-align: center; font-size: 13px; color: #475569;
-  text-decoration: none; transition: color 0.2s;
-}
+.auth-link-btn:hover { border-color: rgba(255,255,255,0.15); color: #f1f5f9; background: #1e2130; }
+.auth-back { display: block; text-align: center; font-size: 13px; color: #475569; text-decoration: none; transition: color 0.2s; }
 .auth-back:hover { color: #94a3b8; }
 `;

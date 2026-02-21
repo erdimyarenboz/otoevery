@@ -87,9 +87,6 @@ export default function AdminDashboard() {
                         <a href="/admin/users" className="nav-item" style={{ textDecoration: 'none' }}>
                             <span className="nav-icon">👥</span> Kullanıcıları Yönet
                         </a>
-                        <a href="/admin/agreements" className="nav-item" style={{ textDecoration: 'none' }}>
-                            <span className="nav-icon">📋</span> Anlaşmaları Yönet
-                        </a>
                     </div>
                 </div>
             </div>
