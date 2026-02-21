@@ -8,6 +8,8 @@ import companyRoutes from './modules/company/company.routes';
 import driverRoutes from './modules/driver/driver.routes';
 import serviceRoutes from './modules/service/service.routes';
 import mapRoutes from './modules/map/map.routes';
+import individualRoutes from './modules/individual/individual.routes';
+import pricingRoutes from './modules/pricing/pricing.routes';
 import { authenticate, requireRole } from './middleware/auth';
 
 const app = express();
@@ -47,6 +49,8 @@ app.get('/api/debug-env', async (_, res) => {
 
 // ── Public Routes ──────────────────────────────────────
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/individual', individualRoutes);
+app.use('/api/v1/pricing', pricingRoutes);
 
 // ── Protected Routes ───────────────────────────────────
 app.use('/api/v1/admin', authenticate, requireRole('SUPER_ADMIN'), adminRoutes);

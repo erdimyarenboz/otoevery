@@ -109,6 +109,76 @@ router.post('/users', async (req: AuthRequest, res: Response) => {
     return res.status(201).json({ success: true, data: safeUser });
 });
 
+// PUT /api/v1/admin/users/:id/password — Change user password
+router.put('/users/:id/password', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+        return res.status(400).json({ success: false, message: 'Şifre en az 6 karakter olmalı' });
+    }
+    const hashedPw = await bcrypt.hash(password, 12);
+    await prisma.user.update({ where: { id }, data: { password: hashedPw } });
+    return res.json({ success: true, message: 'Şifre güncellendi' });
+});
+
+// PUT /api/v1/admin/users/:id/status — Toggle user active/passive
+router.put('/users/:id/status', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    const user = await prisma.user.update({ where: { id }, data: { isActive } });
+    const { password: _pw, ...safeUser } = user;
+    return res.json({ success: true, data: safeUser, message: `Kullanıcı ${isActive ? 'aktif' : 'pasif'} edildi` });
+});
+
+// ── COMPANY DETAIL ─────────────────────────────────────
+
+// GET /api/v1/admin/companies/:id/vehicles
+router.get('/companies/:id/vehicles', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const vehicles = await prisma.vehicle.findMany({
+        where: { companyId: id },
+        include: { _count: { select: { transactions: true, penalties: true } } },
+        orderBy: { plate: 'asc' },
+    });
+    return res.json({ success: true, data: vehicles });
+});
+
+// GET /api/v1/admin/companies/:id/transactions
+router.get('/companies/:id/transactions', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const transactions = await prisma.transaction.findMany({
+        where: { vehicle: { companyId: id } },
+        include: {
+            vehicle: { select: { plate: true, brand: true, model: true } },
+            serviceCenter: { select: { name: true } },
+        },
+        orderBy: { transactionDate: 'desc' },
+        take: 200,
+    });
+    return res.json({ success: true, data: transactions });
+});
+
+// ── SERVICE CENTER DETAIL ──────────────────────────────
+
+// GET /api/v1/admin/service-centers/:id/transactions
+router.get('/service-centers/:id/transactions', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const transactions = await prisma.transaction.findMany({
+        where: { serviceCenterId: id },
+        include: {
+            vehicle: {
+                select: {
+                    plate: true, brand: true, model: true,
+                    company: { select: { name: true } },
+                },
+            },
+        },
+        orderBy: { transactionDate: 'desc' },
+        take: 200,
+    });
+    return res.json({ success: true, data: transactions });
+});
+
 // ── AGREEMENTS ─────────────────────────────────────────
 
 // GET /api/v1/admin/agreements
@@ -326,6 +396,25 @@ router.get('/hakedis/history', async (req: AuthRequest, res: Response) => {
         take: 50,
     });
     return res.json({ success: true, data: payouts });
+});
+
+// ── INDIVIDUAL USERS ────────────────────────────────────
+
+// GET /api/v1/admin/individual-users
+router.get('/individual-users', async (req: AuthRequest, res: Response) => {
+    const users = await prisma.user.findMany({
+        where: { role: 'INDIVIDUAL' },
+        select: {
+            id: true, firstName: true, lastName: true, email: true,
+            phone: true, creditBalance: true, isActive: true, createdAt: true,
+            individualPayments: {
+                where: { status: 'success' },
+                select: { amount: true, creditAmount: true, createdAt: true },
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, data: users });
 });
 
 export default router;
