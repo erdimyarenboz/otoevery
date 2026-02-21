@@ -6,26 +6,40 @@ import './landing.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.otoevery.com.tr';
 
-const PRICING_PLANS = [
+interface PricingPlan {
+  id: string;
+  name: string;
+  subtitle: string;
+  target: string;
+  price: number;
+  priceLabel: string;
+  priceNote: string;
+  accessFee: string | null;
+  badge: string | null;
+  popular: boolean;
+  accent: string;
+  payable: boolean;
+  cta: string;
+  features: string[];
+}
+
+const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'baslangic', name: 'Başlangıç', subtitle: 'Küçük İşletmeler İçin', target: '1 – 15 Araç',
-    price: 299, priceLabel: '₺299', priceNote: '/ araç / ay', accessFee: null as string | null,
-    badge: null as string | null, popular: false, accent: '#6366f1', payable: true,
-    cta: 'Hemen Başla',
+    price: 299, priceLabel: '₺299', priceNote: '/ araç / ay', accessFee: null,
+    badge: null, popular: false, accent: '#6366f1', payable: true, cta: 'Hemen Başla',
     features: ['📍 Gerçek Zamanlı GPS Takibi', '🗺️ Geçmiş Rota İzleme (30 Gün)', '⚠️ Temel Hız ve Rölanti Uyarıları', '📊 Günlük / Haftalık Özet Raporlar', '📧 Standart E-posta Desteği'],
   },
   {
     id: 'profesyonel', name: 'Profesyonel', subtitle: 'Büyüyen İşletmeler İçin', target: '15 – 50 Araç',
     price: 499, priceLabel: '₺499', priceNote: '/ araç / ay', accessFee: '+ ₺999/ay sistem erişimi',
-    badge: '🏆 En Popüler', popular: true, accent: '#818cf8', payable: true,
-    cta: 'Hemen Başla',
+    badge: '🏆 En Popüler', popular: true, accent: '#818cf8', payable: true, cta: 'Hemen Başla',
     features: ["✅ Başlangıç Paketi'nin Her Şeyi", '🤖 YZ Destekli Rota Optimizasyonu', '🧠 Gelişmiş Sürücü Davranış Analizi', '📱 Anlık SMS ve Mobil Bildirimler', '🔧 Araç Bakım ve Muayene Takvimi', '⭐ Öncelikli Destek'],
   },
   {
     id: 'kurumsal', name: 'Kurumsal', subtitle: 'Büyük Filolar İçin', target: '50+ Araç',
-    price: 0, priceLabel: 'Özel Teklif', priceNote: 'size özel fiyatlandırma', accessFee: null as string | null,
-    badge: null as string | null, popular: false, accent: '#06b6d4', payable: false,
-    cta: 'Bize Ulaşın',
+    price: 0, priceLabel: 'Özel Teklif', priceNote: 'size özel fiyatlandırma', accessFee: null,
+    badge: null, popular: false, accent: '#06b6d4', payable: false, cta: 'Bize Ulaşın',
     features: ["✅ Profesyonel Paketin Her Şeyi", '💾 Sınırsız Veri Saklama', '🔮 Öngörücü Bakım (YZ ile Arıza Tahmini)', '🔗 API Erişimi (ERP / CRM Entegrasyonu)', '👤 Özel Müşteri Yöneticisi', '🏷️ Beyaz Etiket (White-label) Seçeneği'],
   },
 ];
