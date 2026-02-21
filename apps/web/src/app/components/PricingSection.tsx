@@ -101,7 +101,7 @@ function IyzicoModal({ plan, onClose }: { plan: typeof plans[0]; onClose: () => 
             const res = await fetch(`${API_URL}/api/v1/pricing/checkout`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planId: plan.id, vehicleCount: parseInt(form.vehicleCount), ...form }),
+                body: JSON.stringify({ planId: plan.id, ...form, vehicleCount: parseInt(form.vehicleCount) }),
             });
             const data = await res.json();
             if (!data.success) { setError(data.message || 'Bir hata oluştu.'); setLoading(false); return; }
