@@ -3,7 +3,32 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import './landing.css';
-import PricingSection from './components/PricingSection';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.otoevery.com.tr';
+
+const PRICING_PLANS = [
+  {
+    id: 'baslangic', name: 'Başlangıç', subtitle: 'Küçük İşletmeler İçin', target: '1 – 15 Araç',
+    price: 299, priceLabel: '₺299', priceNote: '/ araç / ay', accessFee: null as string | null,
+    badge: null as string | null, popular: false, accent: '#6366f1', payable: true,
+    cta: 'Hemen Başla',
+    features: ['📍 Gerçek Zamanlı GPS Takibi', '🗺️ Geçmiş Rota İzleme (30 Gün)', '⚠️ Temel Hız ve Rölanti Uyarıları', '📊 Günlük / Haftalık Özet Raporlar', '📧 Standart E-posta Desteği'],
+  },
+  {
+    id: 'profesyonel', name: 'Profesyonel', subtitle: 'Büyüyen İşletmeler İçin', target: '15 – 50 Araç',
+    price: 499, priceLabel: '₺499', priceNote: '/ araç / ay', accessFee: '+ ₺999/ay sistem erişimi',
+    badge: '🏆 En Popüler', popular: true, accent: '#818cf8', payable: true,
+    cta: 'Hemen Başla',
+    features: ["✅ Başlangıç Paketi'nin Her Şeyi", '🤖 YZ Destekli Rota Optimizasyonu', '🧠 Gelişmiş Sürücü Davranış Analizi', '📱 Anlık SMS ve Mobil Bildirimler', '🔧 Araç Bakım ve Muayene Takvimi', '⭐ Öncelikli Destek'],
+  },
+  {
+    id: 'kurumsal', name: 'Kurumsal', subtitle: 'Büyük Filolar İçin', target: '50+ Araç',
+    price: 0, priceLabel: 'Özel Teklif', priceNote: 'size özel fiyatlandırma', accessFee: null as string | null,
+    badge: null as string | null, popular: false, accent: '#06b6d4', payable: false,
+    cta: 'Bize Ulaşın',
+    features: ["✅ Profesyonel Paketin Her Şeyi", '💾 Sınırsız Veri Saklama', '🔮 Öngörücü Bakım (YZ ile Arıza Tahmini)', '🔗 API Erişimi (ERP / CRM Entegrasyonu)', '👤 Özel Müşteri Yöneticisi', '🏷️ Beyaz Etiket (White-label) Seçeneği'],
+  },
+];
 
 export default function LandingPage() {
   const [formData, setFormData] = useState({
@@ -16,6 +41,12 @@ export default function LandingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [activePricingPlan, setActivePricingPlan] = useState<typeof PRICING_PLANS[0] | null>(null);
+  const [pricingForm, setPricingForm] = useState({ name: '', surname: '', email: '', phone: '', company: '', vehicleCount: '5' });
+  const [pricingStep, setPricingStep] = useState<'form' | 'checkout'>('form');
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState('');
+  const [checkoutHtml, setCheckoutHtml] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,8 +274,163 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* PRICING SECTION */}
-      <PricingSection />
+      {/* ─── PRICING SECTION ─────────────────────────────── */}
+      <section id="pricing" style={{ padding: '96px 24px', background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div className="section-badge">💰 Fiyatlandırma</div>
+            <h2 className="section-title" style={{ marginTop: 16 }}>Filonuza Uygun Paketi Seçin</h2>
+            <p className="section-desc">Şeffaf fiyatlandırma. Gizli ücret yok. İstediğiniz zaman yükseltebilir veya iptal edebilirsiniz.</p>
+          </div>
+
+          {/* Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24, alignItems: 'stretch' }}>
+            {PRICING_PLANS.map(plan => (
+              <div key={plan.id} style={{
+                position: 'relative', borderRadius: 20, padding: '32px 28px',
+                background: plan.popular ? 'linear-gradient(160deg,#1e2240 0%,#1a1d2e 100%)' : '#1a1d27',
+                border: plan.popular ? '1.5px solid rgba(129,140,248,0.55)' : '1px solid rgba(255,255,255,0.08)',
+                boxShadow: plan.popular ? '0 0 0 1px rgba(129,140,248,0.2),0 24px 80px rgba(99,102,241,0.18)' : '0 4px 24px rgba(0,0,0,0.2)',
+                transform: plan.popular ? 'scale(1.04)' : 'none',
+                display: 'flex', flexDirection: 'column', zIndex: plan.popular ? 1 : 0,
+                transition: 'transform 0.3s, box-shadow 0.3s',
+              }}>
+                {plan.badge && (
+                  <div style={{ position: 'absolute', top: -1, right: 24, background: 'linear-gradient(135deg,#818cf8,#6366f1)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 14px 7px', borderRadius: '0 0 12px 12px', boxShadow: '0 4px 12px rgba(99,102,241,0.4)', letterSpacing: '0.02em' }}>{plan.badge}</div>
+                )}
+                {/* Target pill */}
+                <div style={{ display: 'inline-block', padding: '4px 12px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 100, fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 14, width: 'fit-content' }}>{plan.target}</div>
+                <h3 style={{ fontSize: 26, fontWeight: 900, letterSpacing: '-0.03em', color: '#f1f5f9', marginBottom: 4 }}>{plan.name}</h3>
+                <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>{plan.subtitle}</p>
+                {/* Price */}
+                <div style={{ marginBottom: 24, minHeight: 68 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: plan.price === 0 ? 28 : 42, fontWeight: 900, letterSpacing: '-0.04em', color: plan.accent, lineHeight: 1 }}>{plan.priceLabel}</span>
+                    <span style={{ fontSize: 13, color: '#64748b' }}>{plan.priceNote}</span>
+                  </div>
+                  {plan.accessFee && <div style={{ marginTop: 8, fontSize: 12, color: '#475569', padding: '4px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 6, display: 'inline-block' }}>{plan.accessFee}</div>}
+                </div>
+                {/* Divider */}
+                <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', marginBottom: 20 }} />
+                {/* Features */}
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 11, flex: 1, marginBottom: 28 }}>
+                  {plan.features.map((f, i) => <li key={i} style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.5 }}>{f}</li>)}
+                </ul>
+                {/* CTA */}
+                <button
+                  onClick={() => {
+                    if (plan.payable) {
+                      setPricingForm({ name: '', surname: '', email: '', phone: '', company: '', vehicleCount: plan.id === 'baslangic' ? '5' : '20' });
+                      setPricingStep('form'); setPricingError(''); setActivePricingPlan(plan);
+                    } else {
+                      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  style={{
+                    width: '100%', padding: '14px 24px', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    border: plan.popular ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                    background: plan.popular ? `linear-gradient(135deg,${plan.accent},#4f46e5)` : 'rgba(255,255,255,0.06)',
+                    color: '#f1f5f9', marginBottom: 10,
+                    boxShadow: plan.popular ? '0 4px 20px rgba(99,102,241,0.4)' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >{plan.cta}{plan.payable ? ' →' : ''}</button>
+                {plan.payable && <p style={{ fontSize: 11, color: '#334155', textAlign: 'center' }}>🔒 iyzico ile güvenli ödeme</p>}
+              </div>
+            ))}
+          </div>
+
+          {/* Trust row */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 52, flexWrap: 'wrap' }}>
+            {['✅ 30 Gün Ücretsiz Deneme', '🔒 iyzico Güvencesi', '↩️ İptal Garantisi', '📞 7/24 Destek'].map(t => (
+              <span key={t} style={{ fontSize: 13, color: '#475569', fontWeight: 500 }}>{t}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── iyzico PRICING MODAL ──────────────────────────── */}
+      {activePricingPlan && (() => {
+        const plan = activePricingPlan;
+        const vc = parseInt(pricingForm.vehicleCount || '1');
+        const total = plan.price * vc + (plan.id === 'profesyonel' ? 999 : 0);
+        const buildDoc = (html: string) => `<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,sans-serif;background:#fff}#iyzipay-checkout-form{width:100%}iframe{width:100%!important;border:none!important}</style></head><body>${html}</body></html>`;
+        const inpS: React.CSSProperties = { width: '100%', padding: '11px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#f1f5f9', fontFamily: 'inherit', fontSize: 14, outline: 'none', boxSizing: 'border-box' };
+        const lblS: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: '#64748b', display: 'block', marginBottom: 5 };
+        return (
+          <div onClick={(e) => { if (e.target === e.currentTarget) setActivePricingPlan(null); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: '#13151e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, width: '100%', maxWidth: pricingStep === 'checkout' ? 560 : 500, position: 'relative', maxHeight: '94vh', overflowY: 'auto' }}>
+              <button onClick={() => setActivePricingPlan(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', zIndex: 1 }}>✕</button>
+
+              {pricingStep === 'form' && (
+                <form style={{ padding: 32 }} onSubmit={async (e) => {
+                  e.preventDefault(); setPricingError(''); setPricingLoading(true);
+                  try {
+                    const r = await fetch(`${API_URL}/api/v1/pricing/checkout`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ planId: plan.id, ...pricingForm, vehicleCount: vc }),
+                    });
+                    const d = await r.json();
+                    if (!d.success) { setPricingError(d.message || 'Hata oluştu.'); setPricingLoading(false); return; }
+                    setCheckoutHtml(d.data.checkoutFormContent);
+                    setPricingStep('checkout');
+                  } catch { setPricingError('Bağlantı hatası. Tekrar deneyin.'); }
+                  setPricingLoading(false);
+                }}>
+                  <div style={{ marginBottom: 24 }}>
+                    <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 100, background: `${plan.accent}22`, color: plan.accent, fontSize: 12, fontWeight: 700, marginBottom: 10 }}>{plan.name} Paketi</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#f1f5f9' }}>Abonelik Başlat</div>
+                  </div>
+                  <label style={lblS}>Araç Sayısı *</label>
+                  <input required type="number" min="1" max={plan.id === 'baslangic' ? 15 : 50} value={pricingForm.vehicleCount}
+                    onChange={e => setPricingForm({ ...pricingForm, vehicleCount: e.target.value })} style={{ ...inpS, marginBottom: 12 }} />
+                  <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 14, color: '#94a3b8' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span>Araç başı</span><span style={{ color: plan.accent, fontWeight: 700 }}>₺{plan.price} × {vc} araç = ₺{plan.price * vc}</span>
+                    </div>
+                    {plan.id === 'profesyonel' && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span>Sistem Erişimi</span><span>₺999</span></div>}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#f1f5f9', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: 8, fontSize: 16 }}>
+                      <span>Aylık Toplam</span><span style={{ color: plan.accent }}>₺{total.toLocaleString('tr-TR')}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                    <div><label style={lblS}>Ad *</label><input required placeholder="Ad" value={pricingForm.name} onChange={e => setPricingForm({ ...pricingForm, name: e.target.value })} style={inpS} /></div>
+                    <div><label style={lblS}>Soyad *</label><input required placeholder="Soyad" value={pricingForm.surname} onChange={e => setPricingForm({ ...pricingForm, surname: e.target.value })} style={inpS} /></div>
+                  </div>
+                  <div style={{ marginBottom: 12 }}><label style={lblS}>E-posta *</label><input required type="email" placeholder="ornek@sirket.com" value={pricingForm.email} onChange={e => setPricingForm({ ...pricingForm, email: e.target.value })} style={inpS} /></div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                    <div><label style={lblS}>Telefon *</label><input required type="tel" placeholder="05xx xxx xx xx" value={pricingForm.phone} onChange={e => setPricingForm({ ...pricingForm, phone: e.target.value })} style={inpS} /></div>
+                    <div><label style={lblS}>Şirket</label><input placeholder="Şirket Adı" value={pricingForm.company} onChange={e => setPricingForm({ ...pricingForm, company: e.target.value })} style={inpS} /></div>
+                  </div>
+                  {pricingError && <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', color: '#f87171', fontSize: 13, marginBottom: 14 }}>{pricingError}</div>}
+                  <button type="submit" disabled={pricingLoading} style={{ width: '100%', padding: 14, background: pricingLoading ? 'rgba(99,102,241,0.4)' : `linear-gradient(135deg,${plan.accent},#4f46e5)`, border: 'none', borderRadius: 12, color: '#fff', fontSize: 15, fontWeight: 700, cursor: pricingLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 20px rgba(99,102,241,0.35)' }}>
+                    {pricingLoading ? '⏳ Hazırlanıyor...' : `💳 ₺${total.toLocaleString('tr-TR')} — iyzico ile Öde`}
+                  </button>
+                  <p style={{ marginTop: 10, fontSize: 11, color: '#334155', textAlign: 'center' }}>🔒 iyzico güvenceli ödeme · İlk 30 gün ücretsiz deneme</p>
+                </form>
+              )}
+
+              {pricingStep === 'checkout' && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: '#0d0f1a' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <img src="https://www.iyzico.com/assets/images/iyzico_logo.png" alt="iyzico" style={{ height: 18 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      Güvenli Ödeme
+                    </div>
+                    <div style={{ fontSize: 13, color: '#818cf8', fontWeight: 700 }}>₺{total.toLocaleString('tr-TR')}/ay</div>
+                  </div>
+                  <iframe key={checkoutHtml} srcDoc={buildDoc(checkoutHtml)} style={{ width: '100%', height: 620, border: 'none', display: 'block' }}
+                    sandbox="allow-scripts allow-forms allow-same-origin allow-top-navigation allow-popups allow-popups-to-escape-sandbox"
+                    title="iyzico Ödeme Formu" scrolling="yes" />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
 
       {/* CTA BANNER */}
       <section className="landing-cta-banner">
