@@ -7,6 +7,20 @@ import { AuthRequest } from '../../middleware/auth';
 const router = Router();
 const prisma = new PrismaClient();
 
+const SERVICE_TYPE_LABELS: Record<string, string> = {
+    wash_standard: 'Standart Oto Yıkama',
+    wash_light_commercial: 'Hafif Ticari Oto Yıkama',
+    wash_suv: 'SUV Oto Yıkama',
+    wash_commercial: 'Ticari Oto Yıkama',
+    wash_minibus: 'Minibüs Oto Yıkama',
+    tire_repair: 'Lastik Tamiri',
+    tire_change_4x2: '4x2 Lastik Değişimi',
+    tire_change_4x4: '4x4 Lastik Değişimi',
+    maintenance_petrol: 'Benzinli Araç Oto Bakım',
+    maintenance_diesel: 'Dizel Araç Oto Bakım',
+};
+
+
 // ── COMPANIES ──────────────────────────────────────────
 
 // GET /api/v1/admin/companies
@@ -22,12 +36,18 @@ router.get('/companies', async (req: AuthRequest, res: Response) => {
 
 // POST /api/v1/admin/companies
 router.post('/companies', async (req: AuthRequest, res: Response) => {
-    const { name, slug, address, contactEmail, contactPhone } = req.body;
+    const { name, slug, address, contactEmail, contactPhone, taxOffice, taxNumber, contractFee, contractMonths } = req.body;
     if (!name || !slug) {
         return res.status(400).json({ success: false, message: 'İsim ve slug gerekli' });
     }
     const company = await prisma.company.create({
-        data: { name, slug, address, contactEmail, contactPhone },
+        data: {
+            name, slug, address, contactEmail, contactPhone,
+            taxOffice: taxOffice || null,
+            taxNumber: taxNumber || null,
+            contractFee: contractFee ? Number(contractFee) : null,
+            contractMonths: contractMonths ? Number(contractMonths) : null,
+        },
     });
     return res.status(201).json({ success: true, data: company });
 });
@@ -47,15 +67,35 @@ router.get('/service-centers', async (req: AuthRequest, res: Response) => {
 
 // POST /api/v1/admin/service-centers
 router.post('/service-centers', async (req: AuthRequest, res: Response) => {
-    const { name, address, type, contactEmail, phone } = req.body;
+    const { name, address, type, contactEmail, phone, contactName } = req.body;
     if (!name) {
         return res.status(400).json({ success: false, message: 'İsim gerekli' });
     }
     const center = await prisma.serviceCenter.create({
-        data: { name, address, type: type || 'both', contactEmail, phone },
+        data: { name, address, type: type || 'both', contactEmail, phone, contactName: contactName || null },
     });
     return res.status(201).json({ success: true, data: center });
 });
+
+// PUT /api/v1/admin/service-centers/:id — Update service center info
+router.put('/service-centers/:id', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { name, address, type, contactEmail, phone, contactName, isActive } = req.body;
+    const center = await prisma.serviceCenter.update({
+        where: { id },
+        data: {
+            ...(name && { name }),
+            ...(address !== undefined && { address }),
+            ...(type !== undefined && { type }),
+            ...(contactEmail !== undefined && { contactEmail }),
+            ...(phone !== undefined && { phone }),
+            ...(contactName !== undefined && { contactName }),
+            ...(isActive !== undefined && { isActive }),
+        },
+    });
+    return res.json({ success: true, data: center, message: 'Servis merkezi güncellendi' });
+});
+
 
 // PUT /api/v1/admin/service-centers/:id/payment-day — Set payment day
 router.put('/service-centers/:id/payment-day', async (req: AuthRequest, res: Response) => {
@@ -415,6 +455,118 @@ router.get('/individual-users', async (req: AuthRequest, res: Response) => {
         orderBy: { createdAt: 'desc' },
     });
     return res.json({ success: true, data: users });
+});
+
+// ── SERVICE PRICING ────────────────────────────────────────
+
+// GET /api/v1/admin/service-centers/:id/pricing
+router.get('/service-centers/:id/pricing', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { companyId } = req.query;
+    const where: any = { serviceCenterId: id, isActive: true };
+    if (companyId) where.companyId = companyId as string;
+    const pricings = await prisma.servicePricing.findMany({
+        where,
+        include: { company: { select: { id: true, name: true } } },
+        orderBy: [{ companyId: 'asc' }, { serviceType: 'asc' }],
+    });
+    return res.json({ success: true, data: pricings, serviceTypes: SERVICE_TYPE_LABELS });
+});
+
+// POST /api/v1/admin/service-centers/:id/pricing — upsert a price entry
+router.post('/service-centers/:id/pricing', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { serviceType, price, companyId } = req.body;
+    if (!serviceType || price == null) {
+        return res.status(400).json({ success: false, message: 'Hizmet türü ve fiyat gerekli' });
+    }
+    // Upsert: find existing then update or create
+    const existing = await prisma.servicePricing.findFirst({
+        where: { serviceCenterId: id, serviceType, companyId: companyId || null },
+    });
+    let pricing;
+    if (existing) {
+        pricing = await prisma.servicePricing.update({
+            where: { id: existing.id },
+            data: { price: Number(price), isActive: true },
+        });
+    } else {
+        pricing = await prisma.servicePricing.create({
+            data: {
+                serviceCenterId: id,
+                serviceType,
+                price: Number(price),
+                companyId: companyId || null,
+            },
+        });
+    }
+    return res.status(201).json({ success: true, data: pricing });
+});
+
+// DELETE /api/v1/admin/service-centers/:id/pricing/:priceId
+router.delete('/service-centers/:id/pricing/:priceId', async (req: AuthRequest, res: Response) => {
+    const { priceId } = req.params;
+    await prisma.servicePricing.update({ where: { id: priceId }, data: { isActive: false } });
+    return res.json({ success: true, message: 'Fiyat kaldırıldı' });
+});
+
+// GET /api/v1/admin/service-centers/:id/pricing/companies — get company-specific pricings
+router.get('/service-centers/:id/pricing/companies', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const companies = await prisma.company.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+    });
+    return res.json({ success: true, data: companies });
+});
+
+// ── SUPPORT TICKETS (Admin) ──────────────────────────────
+
+// GET /api/v1/admin/tickets
+router.get('/tickets', async (req: AuthRequest, res: Response) => {
+    const { status } = req.query;
+    const where: any = {};
+    if (status) where.status = status;
+    const tickets = await prisma.supportTicket.findMany({
+        where,
+        include: { company: { select: { id: true, name: true } } },
+        orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, data: tickets });
+});
+
+// PUT /api/v1/admin/tickets/:id/resolve — reply and/or close
+router.put('/tickets/:id/resolve', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { adminReply, status } = req.body;
+    const data: any = { updatedAt: new Date() };
+    if (adminReply !== undefined) data.adminReply = adminReply;
+    if (status) {
+        data.status = status;
+        if (status === 'closed') data.closedAt = new Date();
+    }
+    const ticket = await prisma.supportTicket.update({ where: { id }, data });
+    return res.json({ success: true, data: ticket, message: 'Çağrı güncellendi' });
+});
+
+// PUT /api/v1/admin/companies/:id — Update company info including tax fields
+router.put('/companies/:id', async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { name, address, contactEmail, contactPhone, taxOffice, taxNumber, contractFee, contractMonths } = req.body;
+    const company = await prisma.company.update({
+        where: { id },
+        data: {
+            ...(name && { name }),
+            ...(address !== undefined && { address }),
+            ...(contactEmail !== undefined && { contactEmail }),
+            ...(contactPhone !== undefined && { contactPhone }),
+            ...(taxOffice !== undefined && { taxOffice }),
+            ...(taxNumber !== undefined && { taxNumber }),
+            ...(contractFee !== undefined && { contractFee: contractFee ? Number(contractFee) : null }),
+            ...(contractMonths !== undefined && { contractMonths: contractMonths ? Number(contractMonths) : null }),
+        },
+    });
+    return res.json({ success: true, data: company });
 });
 
 export default router;

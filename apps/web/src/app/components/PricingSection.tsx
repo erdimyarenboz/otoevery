@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.otoevery.com.tr';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 const plans = [
     {
@@ -167,7 +167,7 @@ function IyzicoModal({ plan, onClose }: { plan: typeof plans[0]; onClose: () => 
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', background: '#0d0f1a' }}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <img src="https://www.iyzico.com/assets/images/iyzico_logo.png" alt="iyzico" style={{ height: 18 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                <img src="/logo.png" alt="iyzico" style={{ height: 18 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                 Güvenli Ödeme
                             </div>
                             <div style={{ fontSize: 13, color: '#818cf8', fontWeight: 700 }}>₺{totalAmount.toLocaleString('tr-TR')}</div>

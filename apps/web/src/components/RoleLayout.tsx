@@ -46,8 +46,7 @@ export default function RoleLayout({ children, title, navItems, roleBadge, roleC
             <aside className="sidebar">
                 <div className="sidebar-header">
                     <div className="sidebar-logo">
-                        <div className="logo-icon">OE</div>
-                        <span className="logo-text">OtoEvery</span>
+                        <img src="/logo.png" alt="OtoEvery" style={{ height: 32 }} />
                     </div>
                 </div>
 

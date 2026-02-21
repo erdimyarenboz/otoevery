@@ -159,36 +159,29 @@ router.post('/receive-payment', async (req: AuthRequest, res: Response) => {
 // ── KREDİ İLE ÖDEME ────────────────────────────────────
 
 // POST /api/v1/service/use-credit — Use vehicle credit for service
-// Daily limit: 1 wash, 1 maintenance, 1 tire per vehicle per day
 router.post('/use-credit', async (req: AuthRequest, res: Response) => {
     const { vehiclePlate, serviceType, amount } = req.body;
 
     if (!vehiclePlate || !serviceType || !amount || amount <= 0) {
         return res.status(400).json({
             success: false,
-            message: 'Plaka, hizmet türü (wash/maintenance/tire) ve tutar gerekli',
+            message: 'Plaka, hizmet türü ve tutar gerekli',
         });
     }
 
-    // Validate service type
-    const validTypes = ['wash', 'maintenance', 'tire'];
-    if (!validTypes.includes(serviceType)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Hizmet türü wash, maintenance veya tire olmalı',
-        });
-    }
-
-    // Find vehicle
+    // Find vehicle with rights
     const vehicle = await prisma.vehicle.findUnique({
         where: { plate: vehiclePlate },
-        include: { company: { select: { name: true } } },
+        include: {
+            company: { select: { id: true, name: true } },
+            serviceRights: { where: { serviceType } }
+        },
     });
     if (!vehicle) {
         return res.status(404).json({ success: false, message: 'Araç bulunamadı' });
     }
 
-    // Check daily limit — has this vehicle already used this service type today?
+    // Check daily limit
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
@@ -204,67 +197,86 @@ router.post('/use-credit', async (req: AuthRequest, res: Response) => {
     });
 
     if (usedToday >= 1) {
-        const typeLabels: Record<string, string> = {
-            wash: 'yıkama',
-            maintenance: 'bakım',
-            tire: 'lastik',
-        };
         return res.status(400).json({
             success: false,
-            message: `Bu araç bugün zaten ${typeLabels[serviceType]} hizmeti kullanmış. Günlük limit: 1 kez.`,
+            message: `Bu araç bugün zaten bu hizmeti kullanmış. Günlük limit: 1 kez.`,
         });
     }
 
-    // Check vehicle has enough credit balance
-    if (vehicle.creditBalance < amount) {
+    let storageType = 'creditBalance'; // default fallback
+    const right = vehicle.serviceRights[0];
+
+    // Priority 1: Service Specific Points
+    if (right && right.points >= amount) {
+        storageType = 'rightPoints';
+    }
+    // Priority 2: Service Specific Quantity (Count-based)
+    else if (right && right.quantity > 0) {
+        storageType = 'rightQuantity';
+    }
+    // Priority 3: General Vehicle Credit Balance
+    else if (vehicle.creditBalance >= amount) {
+        storageType = 'creditBalance';
+    } else {
         return res.status(400).json({
             success: false,
-            message: `Araç kredi bakiyesi yetersiz. Mevcut: ₺${vehicle.creditBalance.toLocaleString('tr-TR')}`,
+            message: `Yetersiz bakiye veya kullanım hakkı.`,
         });
     }
 
-    // Deduct credit from vehicle
-    await prisma.vehicle.update({
-        where: { id: vehicle.id },
-        data: { creditBalance: { decrement: amount } },
-    });
+    // Transactional Update
+    const result = await prisma.$transaction(async (tx) => {
+        if (storageType === 'rightPoints') {
+            await tx.vehicleServiceRight.update({
+                where: { id: right.id },
+                data: { points: { decrement: amount } }
+            });
+        } else if (storageType === 'rightQuantity') {
+            await tx.vehicleServiceRight.update({
+                where: { id: right.id },
+                data: { quantity: { decrement: 1 } }
+            });
+        } else {
+            await tx.vehicle.update({
+                where: { id: vehicle.id },
+                data: { creditBalance: { decrement: amount } }
+            });
+        }
 
-    // Create credit spend transaction
-    await prisma.creditTransaction.create({
-        data: {
-            type: 'spend',
-            amount,
-            vehicleId: vehicle.id,
-            companyId: vehicle.companyId,
-            serviceCenterId: req.user!.serviceCenterId!,
-            serviceType,
-            description: `${vehiclePlate} — ${serviceType} hizmeti — ₺${amount.toLocaleString('tr-TR')}`,
-        },
-    });
+        // Create credit spend transaction
+        await tx.creditTransaction.create({
+            data: {
+                type: 'spend',
+                amount,
+                vehicleId: vehicle.id,
+                companyId: vehicle.companyId,
+                serviceCenterId: req.user!.serviceCenterId!,
+                serviceType,
+                description: `${vehiclePlate} — ${serviceType} (${storageType}) — ₺${amount.toLocaleString('tr-TR')}`,
+            },
+        });
 
-    // Create a regular transaction too (feeds into hakediş)
-    const transaction = await prisma.transaction.create({
-        data: {
-            type: serviceType,
-            amount,
-            description: `Kredi ile ${serviceType} — ${vehiclePlate}`,
-            vehicleId: vehicle.id,
-            serviceCenterId: req.user!.serviceCenterId!,
-            userId: req.user!.id,
-            status: 'completed',
-        },
-        include: {
-            vehicle: { select: { plate: true, brand: true, model: true } },
-        },
+        // Create a regular transaction
+        return tx.transaction.create({
+            data: {
+                type: serviceType,
+                amount,
+                description: `Kredi/Hak ile ${serviceType} — ${vehiclePlate}`,
+                vehicleId: vehicle.id,
+                serviceCenterId: req.user!.serviceCenterId!,
+                userId: req.user!.id,
+                status: 'completed',
+            },
+            include: {
+                vehicle: { select: { plate: true, brand: true, model: true } },
+            },
+        });
     });
 
     return res.status(201).json({
         success: true,
-        data: {
-            transaction,
-            remainingBalance: vehicle.creditBalance - amount,
-        },
-        message: `₺${amount.toLocaleString('tr-TR')} kredi kullanıldı. Kalan: ₺${(vehicle.creditBalance - amount).toLocaleString('tr-TR')}`,
+        data: { transaction: result },
+        message: `₺${amount.toLocaleString('tr-TR')} tutarında kullanım başarıyla gerçekleşti.`,
     });
 });
 

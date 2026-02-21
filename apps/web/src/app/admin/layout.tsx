@@ -6,6 +6,7 @@ const NAV_ITEMS = [
     { label: 'Genel Bakış', icon: '📊', href: '/admin' },
     { label: 'Şirketler', icon: '🏢', href: '/admin/companies' },
     { label: 'Servis Merkezleri', icon: '🔧', href: '/admin/service-centers' },
+    { label: 'Destek Talepleri', icon: '🎫', href: '/admin/support' },
     { label: 'Kullanıcılar', icon: '👥', href: '/admin/users' },
     { label: 'Bireysel Kullanıcılar', icon: '🧑', href: '/admin/individual-users' },
     { label: 'Krediler', icon: '💳', href: '/admin/credits' },

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import './landing.css';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.otoevery.com.tr';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 interface PricingPlan {
   id: string;
@@ -62,6 +62,35 @@ export default function LandingPage() {
   const [pricingError, setPricingError] = useState('');
   const [checkoutHtml, setCheckoutHtml] = useState('');
 
+  // Partner form
+  const [partnerForm, setPartnerForm] = useState({
+    serviceName: '', contactName: '', address: '', phone: '',
+    services: [] as string[],
+  });
+  const [partnerSubmitting, setPartnerSubmitting] = useState(false);
+  const [partnerSubmitted, setPartnerSubmitted] = useState(false);
+
+  const PARTNER_SERVICES = [
+    'Standart Oto Yıkama', 'SUV Oto Yıkama', 'Ticari Oto Yıkama', 'Miniübs Yıkama',
+    'Lastik Tamiri', '4x2 Lastik Değişimi', '4x4 Lastik Değişimi',
+    'Benzinli Araç Bakım', 'Dizel Araç Bakım',
+  ];
+
+  const handlePartnerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPartnerSubmitting(true);
+    const svcs = partnerForm.services.length > 0 ? partnerForm.services.join(', ') : 'Belirtilmedi';
+    const text = `🔧 *OtoEvery İş Ortağı Başvurusu*%0A%0A🏢 Servis Adı: ${encodeURIComponent(partnerForm.serviceName)}%0A👤 Yetkili: ${encodeURIComponent(partnerForm.contactName)}%0A📍 Adres: ${encodeURIComponent(partnerForm.address)}%0A📞 Telefon: ${encodeURIComponent(partnerForm.phone)}%0A🛠 Sunulan Hizmetler: ${encodeURIComponent(svcs)}`;
+    window.open(`https://wa.me/905077605747?text=${text}`, '_blank');
+    setTimeout(() => { setPartnerSubmitted(true); setPartnerSubmitting(false); }, 800);
+  };
+
+  const toggleService = (s: string) => {
+    setPartnerForm(p => ({
+      ...p, services: p.services.includes(s) ? p.services.filter(x => x !== s) : [...p.services, s],
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -95,13 +124,13 @@ export default function LandingPage() {
       <nav className="landing-nav">
         <div className="landing-nav-inner">
           <div className="landing-brand">
-            <div className="landing-logo-icon">OE</div>
-            <span className="landing-logo-text">OtoEvery</span>
+            <img src="/logo.png" alt="OtoEvery" style={{ height: 48 }} />
           </div>
           <div className={`landing-nav-links ${mobileMenu ? 'open' : ''}`}>
             <a href="#features">Özellikler</a>
             <a href="#how">Nasıl Çalışır?</a>
             <a href="#pricing">Fiyatlandırma</a>
+            <a href="#partner">İş Ortağı Ol</a>
             <a href="#contact">İletişim</a>
           </div>
           <div className="landing-nav-cta">
@@ -572,14 +601,74 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* IS ORTAGI SECTION */}
+      <section id="partner" style={{ padding: '80px 0', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
+        <div className="landing-container">
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 100, padding: '6px 20px', fontSize: 13, color: '#10b981', fontWeight: 700, marginBottom: 16 }}>🤝 İŞ ORTAĞI PROGRAMI</div>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 900, color: '#f8fafc', margin: '0 0 16px' }}>İş Ortağımız Olun</h2>
+            <p style={{ fontSize: 17, color: '#94a3b8', maxWidth: 560, margin: '0 auto' }}>Oto yıkama, bakım veya lastik servisiyseniz OtoEvery ağına katılın. Anlaşmalı şirketlerin araçlarına hizmet verin, güvenli ödeme alın.</p>
+          </div>
+
+          <div style={{ maxWidth: 680, margin: '0 auto', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 'clamp(24px, 4vw, 44px)' }}>
+            {partnerSubmitted ? (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+                <h3 style={{ color: '#10b981', fontSize: 22, fontWeight: 800 }}>Başvurunuz Alındı!</h3>
+                <p style={{ color: '#94a3b8', marginTop: 8 }}>WhatsApp üzerinden ekibimiz en kısa sürede sizinle iletişime geçecek.</p>
+                <button onClick={() => { setPartnerSubmitted(false); setPartnerForm({ serviceName: '', contactName: '', address: '', phone: '', services: [] }); }} style={{ marginTop: 20, background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', color: '#10b981', borderRadius: 10, padding: '10px 28px', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Yeni Başvuru</button>
+              </div>
+            ) : (
+              <form onSubmit={handlePartnerSubmit}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 16 }}>
+                  {[
+                    { key: 'serviceName', label: 'Servis / İşletme Adı *', placeholder: 'Hızlı Wash & Go' },
+                    { key: 'contactName', label: 'Yetkili Adı Soyadı *', placeholder: 'Ahmet Yılmaz' },
+                    { key: 'address', label: 'Adres *', placeholder: 'Kadıköy, İstanbul' },
+                    { key: 'phone', label: 'Telefon *', placeholder: '05XX XXX XX XX' },
+                  ].map(f => (
+                    <div key={f.key}>
+                      <label style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 6, fontWeight: 600 }}>{f.label}</label>
+                      <input required placeholder={f.placeholder} value={(partnerForm as any)[f.key]}
+                        onChange={e => setPartnerForm(p => ({ ...p, [f.key]: e.target.value }))}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '11px 14px', color: '#f8fafc', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 10, fontWeight: 600 }}>Sunduğunuz Hizmetler (birden fazla seçebilirsiniz)</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {PARTNER_SERVICES.map(s => {
+                      const checked = partnerForm.services.includes(s);
+                      return (
+                        <button type="button" key={s} onClick={() => toggleService(s)}
+                          style={{ padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: checked ? 700 : 400, background: checked ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.06)', border: checked ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)', color: checked ? '#10b981' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}>
+                          {checked ? '✓ ' : ''}{s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button type="submit" disabled={partnerSubmitting}
+                  style={{ width: '100%', padding: '14px 0', borderRadius: 12, fontSize: 16, fontWeight: 800, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', cursor: 'pointer', letterSpacing: 0.3 }}>
+                  {partnerSubmitting ? 'Gönderiliyor...' : '📱 WhatsApp ile Başvur'}
+                </button>
+                <p style={{ textAlign: 'center', fontSize: 12, color: '#64748b', marginTop: 12 }}>Başvurunuz WhatsApp üzerinden ekibimize iletilir. 24 saat içinde dönüş yapılır.</p>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer className="landing-footer">
         <div className="landing-container">
           <div className="footer-inner">
             <div className="footer-brand">
               <div className="landing-brand">
-                <div className="landing-logo-icon" style={{ width: 28, height: 28, fontSize: 13 }}>OE</div>
-                <span className="landing-logo-text" style={{ fontSize: 16 }}>OtoEvery</span>
+                <img src="/logo.png" alt="OtoEvery" style={{ height: 40 }} />
               </div>
               <p>Türkiye&apos;nin lider filo yönetim platformu</p>
             </div>

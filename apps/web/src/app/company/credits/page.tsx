@@ -11,18 +11,39 @@ interface Vehicle {
     creditBalance: number;
 }
 
+const SERVICE_TYPE_LABELS: Record<string, string> = {
+    wash_standard: 'Standart Oto Yıkama',
+    wash_light_commercial: 'Hafif Ticari Oto Yıkama',
+    wash_suv: 'SUV Oto Yıkama',
+    wash_commercial: 'Ticari Oto Yıkama',
+    wash_minibus: 'Minibüs Oto Yıkama',
+    tire_repair: 'Lastik Tamiri',
+    tire_change_4x2: '4x2 Lastik Değişimi',
+    tire_change_4x4: '4x4 Lastik Değişimi',
+    maintenance_petrol: 'Benzinli Araç Oto Bakım',
+    maintenance_diesel: 'Dizel Araç Oto Bakım',
+};
+
 export default function CompanyCreditsPage() {
     const [company, setCompany] = useState<any>(null);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [tab, setTab] = useState<'credits' | 'rights'>('credits');
 
-    // Allocation form
+    // Monetary credit allocation
     const [selectedVehicle, setSelectedVehicle] = useState('');
     const [amount, setAmount] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [message, setMessage] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
+
+    // Service right allocation
+    const [rightVehicle, setRightVehicle] = useState('');
+    const [rightType, setRightType] = useState('wash_standard');
+    const [rightQty, setRightQty] = useState('1');
+    const [rightLoading, setRightLoading] = useState(false);
+    const [vehicleRights, setVehicleRights] = useState<any[]>([]);
 
     const fetchData = useCallback(() => {
         setLoading(true);
@@ -41,10 +62,17 @@ export default function CompanyCreditsPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    const loadVehicleRights = async (vehicleId: string) => {
+        if (!vehicleId) { setVehicleRights([]); return; }
+        const res = await api.get(`/api/v1/company/vehicles/${vehicleId}/rights`);
+        if (res.success) setVehicleRights(res.data);
+    };
+
+    useEffect(() => { loadVehicleRights(rightVehicle); }, [rightVehicle]);
+
     const handleAllocate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedVehicle || !amount || Number(amount) <= 0) return;
-
         setSubmitting(true);
         setErrorMsg('');
         const res = await api.post('/api/v1/company/credits/allocate', {
@@ -52,12 +80,34 @@ export default function CompanyCreditsPage() {
             amount: Number(amount),
         });
         setSubmitting(false);
-
         if (res.success) {
             setMessage(res.message || 'İşlem tamamlandı');
             setAmount('');
             setSelectedVehicle('');
             fetchData();
+            setTimeout(() => setMessage(''), 4000);
+        } else {
+            setErrorMsg(res.message || 'Hata oluştu');
+            setTimeout(() => setErrorMsg(''), 4000);
+        }
+    };
+
+    const handleAllocateRight = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!rightVehicle || !rightType || Number(rightQty) < 1) return;
+        setRightLoading(true);
+        setErrorMsg('');
+        const res = await api.post('/api/v1/company/credits/allocate-right', {
+            vehicleId: rightVehicle,
+            serviceType: rightType,
+            quantity: Number(rightQty),
+        });
+        setRightLoading(false);
+        if (res.success) {
+            setMessage(res.message || 'Hak yüklendi');
+            setRightQty('1');
+            fetchData();
+            loadVehicleRights(rightVehicle);
             setTimeout(() => setMessage(''), 4000);
         } else {
             setErrorMsg(res.message || 'Hata oluştu');
@@ -75,8 +125,8 @@ export default function CompanyCreditsPage() {
         <div>
             <div className="page-header">
                 <div>
-                    <div className="page-title">💳 Kredi Yönetimi</div>
-                    <div className="page-description">Şirket kredisini araçlara dağıtın</div>
+                    <div className="page-title">💳 Kredi & Hizmet Hakkı</div>
+                    <div className="page-description">Şirket kredisini araçlara dağıtın veya hizmet hakkı yükleyin</div>
                 </div>
             </div>
 
@@ -110,87 +160,139 @@ export default function CompanyCreditsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-2">
-                {/* Allocate Form */}
-                <div className="card animate-fadeIn">
-                    <div className="card-header">
-                        <span className="card-title">➡️ Araca Kredi Yükle</span>
-                    </div>
-                    <form onSubmit={handleAllocate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div>
-                            <label className="form-label">Araç Seçin</label>
-                            <select className="form-input" value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} required>
-                                <option value="">— Araç seçin —</option>
-                                {vehicles.map(v => (
-                                    <option key={v.id} value={v.id}>
-                                        {v.plate} {v.brand && `— ${v.brand} ${v.model || ''}`} (₺{v.creditBalance.toLocaleString('tr-TR')})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="form-label">Tutar (₺)</label>
-                            <input
-                                type="number"
-                                className="form-input"
-                                value={amount}
-                                onChange={e => setAmount(e.target.value)}
-                                placeholder="Ör: 500"
-                                min="1"
-                                step="1"
-                                required
-                            />
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                                Kullanılabilir bakiye: ₺{(company?.creditBalance || 0).toLocaleString('tr-TR')}
-                            </div>
-                        </div>
-                        <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', padding: '12px 0', fontSize: 15 }}>
-                            {submitting ? '⏳...' : '💰 Kredi Yükle'}
-                        </button>
-                    </form>
-                </div>
+            {/* Tab switcher */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                {[{ key: 'credits', label: '💰 Kredi Yükleme' }, { key: 'rights', label: '🎫 Hizmet Hakkı Yükleme' }].map(t => (
+                    <button key={t.key} onClick={() => setTab(t.key as any)}
+                        style={{ padding: '9px 20px', borderRadius: 10, fontSize: 14, fontWeight: tab === t.key ? 700 : 500, background: tab === t.key ? 'var(--primary)' : 'var(--bg-secondary)', color: tab === t.key ? '#fff' : 'var(--text-primary)', border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.2s' }}>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
 
-                {/* Vehicle Balances */}
-                <div className="card animate-fadeIn">
-                    <div className="card-header">
-                        <span className="card-title">🚗 Araç Bakiyeleri</span>
+            {tab === 'credits' ? (
+                <div className="grid grid-2">
+                    {/* Allocate Form */}
+                    <div className="card animate-fadeIn">
+                        <div className="card-header">
+                            <span className="card-title">➡️ Araca Kredi Yükle</span>
+                        </div>
+                        <form onSubmit={handleAllocate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div>
+                                <label className="form-label">Araç Seçin</label>
+                                <select className="form-input" value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} required>
+                                    <option value="">— Araç seçin —</option>
+                                    {vehicles.map(v => (
+                                        <option key={v.id} value={v.id}>
+                                            {v.plate} {v.brand && `— ${v.brand} ${v.model || ''}`} (₺{v.creditBalance.toLocaleString('tr-TR')})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label">Tutar (₺)</label>
+                                <input type="number" className="form-input" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Ör: 500" min="1" step="1" required />
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                                    Kullanılabilir bakiye: ₺{(company?.creditBalance || 0).toLocaleString('tr-TR')}
+                                </div>
+                            </div>
+                            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', padding: '12px 0', fontSize: 15 }}>
+                                {submitting ? '⏳...' : '💰 Kredi Yükle'}
+                            </button>
+                        </form>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {vehicles.map(v => (
-                            <div key={v.id} style={{
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                padding: '12px 16px', borderBottom: '1px solid var(--border)',
-                            }}>
-                                <div>
-                                    <div style={{ fontWeight: 600 }}>{v.plate}</div>
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                        {v.brand} {v.model}
+
+                    {/* Vehicle Balances */}
+                    <div className="card animate-fadeIn">
+                        <div className="card-header">
+                            <span className="card-title">🚗 Araç Bakiyeleri</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {vehicles.map(v => (
+                                <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 600 }}>{v.plate}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{v.brand} {v.model}</div>
+                                    </div>
+                                    <div style={{ fontWeight: 700, fontSize: 16, color: v.creditBalance > 0 ? '#10b981' : 'var(--text-muted)' }}>
+                                        ₺{v.creditBalance.toLocaleString('tr-TR')}
                                     </div>
                                 </div>
-                                <div style={{ fontWeight: 700, fontSize: 16, color: v.creditBalance > 0 ? '#10b981' : 'var(--text-muted)' }}>
-                                    ₺{v.creditBalance.toLocaleString('tr-TR')}
-                                </div>
-                            </div>
-                        ))}
-                        {vehicles.length === 0 && <div className="empty-state"><p>Araç yok</p></div>}
+                            ))}
+                            {vehicles.length === 0 && <div className="empty-state"><p>Araç yok</p></div>}
+                        </div>
                     </div>
                 </div>
-            </div>
+            ) : (
+                <div className="grid grid-2">
+                    {/* Service Right Allocation Form */}
+                    <div className="card animate-fadeIn">
+                        <div className="card-header">
+                            <span className="card-title">🎫 Hizmet Hakkı Yükle</span>
+                        </div>
+                        <form onSubmit={handleAllocateRight} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div>
+                                <label className="form-label">Araç Seçin</label>
+                                <select className="form-input" value={rightVehicle} onChange={e => setRightVehicle(e.target.value)} required>
+                                    <option value="">— Araç seçin —</option>
+                                    {vehicles.map(v => (
+                                        <option key={v.id} value={v.id}>{v.plate} {v.brand && `— ${v.brand} ${v.model || ''}`}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label">Hizmet Türü</label>
+                                <select className="form-input" value={rightType} onChange={e => setRightType(e.target.value)}>
+                                    {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label">Adet</label>
+                                <input type="number" className="form-input" value={rightQty} onChange={e => setRightQty(e.target.value)} min="1" step="1" required />
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                                    Mevcut bakiye: ₺{(company?.creditBalance || 0).toLocaleString('tr-TR')} · Birim fiyat anlaşmanıza göre belirlenir
+                                </div>
+                            </div>
+                            <button type="submit" className="btn btn-primary" disabled={rightLoading} style={{ width: '100%', padding: '12px 0', fontSize: 15 }}>
+                                {rightLoading ? '⏳...' : '🎫 Hak Yükle'}
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* Vehicle Rights */}
+                    <div className="card animate-fadeIn">
+                        <div className="card-header">
+                            <span className="card-title">🚗 Araç Hizmet Hakları</span>
+                        </div>
+                        {!rightVehicle ? (
+                            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Soldaki formdan bir araç seçin</div>
+                        ) : vehicleRights.length === 0 ? (
+                            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Bu araçta yüklü hak bulunmuyor</div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                                {vehicleRights.map(r => (
+                                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                                        <div style={{ fontSize: 14 }}>{SERVICE_TYPE_LABELS[r.serviceType] || r.serviceType}</div>
+                                        <span style={{ fontWeight: 800, fontSize: 18, color: r.quantity > 0 ? '#10b981' : 'var(--text-muted)' }}>×{r.quantity}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Transaction History */}
             {history.length > 0 && (
                 <div className="card animate-fadeIn" style={{ marginTop: 24 }}>
                     <div className="card-header">
-                        <span className="card-title">📋 Kredi Geçmişi</span>
+                        <span className="card-title">📋 Kredi & Hak Geçmişi</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {history.map(t => (
-                            <div key={t.id} style={{
-                                display: 'flex', alignItems: 'center', gap: 12,
-                                padding: '10px 16px', borderBottom: '1px solid var(--border)',
-                            }}>
+                            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
                                 <span style={{ fontSize: 18 }}>
-                                    {t.type === 'load' ? '➡️' : t.type === 'allocate' ? '🚗' : '🔧'}
+                                    {t.type === 'load' ? '⬇️' : t.type === 'allocate' ? '🚗' : t.type === 'right_allocate' ? '🎫' : '🔧'}
                                 </span>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 500, fontSize: 13 }}>{t.description}</div>
@@ -200,10 +302,7 @@ export default function CompanyCreditsPage() {
                                         {t.serviceCenter && ` • ${t.serviceCenter.name}`}
                                     </div>
                                 </div>
-                                <span style={{
-                                    fontWeight: 700, fontSize: 14,
-                                    color: t.type === 'load' ? '#10b981' : t.type === 'spend' ? '#ef4444' : '#6366f1',
-                                }}>
+                                <span style={{ fontWeight: 700, fontSize: 14, color: t.type === 'load' ? '#10b981' : t.type === 'spend' ? '#ef4444' : '#6366f1' }}>
                                     {t.type === 'spend' ? '-' : ''}₺{t.amount.toLocaleString('tr-TR')}
                                 </span>
                             </div>

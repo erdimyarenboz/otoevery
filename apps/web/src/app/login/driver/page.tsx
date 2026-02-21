@@ -6,111 +6,110 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
 export default function DriverLoginPage() {
-    const router = useRouter();
-    const { login } = useAuth();
-    const [plateNumber, setPlateNumber] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPw, setShowPw] = useState(false);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { login } = useAuth();
+  const [plateNumber, setPlateNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        const res = await login({ plateNumber, password });
-        if (res.success) {
-            router.push('/driver');
-        } else {
-            setError(res.message || 'Plaka veya şifre hatalı');
-        }
-        setLoading(false);
-    };
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const res = await login({ plateNumber, password });
+    if (res.success) {
+      router.push('/driver');
+    } else {
+      setError(res.message || 'Plaka veya şifre hatalı');
+    }
+    setLoading(false);
+  };
 
-    const formatPlate = (value: string) => {
-        return value.toUpperCase().replace(/[^A-ZÇĞİÖŞÜ0-9 ]/g, '');
-    };
+  const formatPlate = (value: string) => {
+    return value.toUpperCase().replace(/[^A-ZÇĞİÖŞÜ0-9 ]/g, '');
+  };
 
-    return (
-        <div className="auth-page">
-            <div className="auth-glow-1" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)' }} />
-            <div className="auth-glow-2" />
+  return (
+    <div className="auth-page">
+      <div className="auth-glow-1" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)' }} />
+      <div className="auth-glow-2" />
 
-            <div className="auth-card">
-                <Link href="/" className="auth-logo">
-                    <div className="auth-logo-icon" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>OE</div>
-                    <span className="auth-logo-text">OtoEvery</span>
-                </Link>
+      <div className="auth-card">
+        <Link href="/" className="auth-logo">
+          <img src="/logo.png" alt="OtoEvery" style={{ height: 56 }} />
+        </Link>
 
-                <div className="auth-header">
-                    <div className="auth-type-badge" style={{ background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.2)', color: '#34d399' }}>
-                        🚗 Sürücü Girişi
-                    </div>
-                    <h1 className="auth-title">Plaka ile Giriş</h1>
-                    <p className="auth-subtitle">Araç plakanız ve şifrenizle giriş yapın</p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="auth-form">
-                    <div className="auth-field">
-                        <label>Araç Plakası</label>
-                        <input
-                            type="text"
-                            placeholder="34 ABC 123"
-                            value={plateNumber}
-                            onChange={(e) => setPlateNumber(formatPlate(e.target.value))}
-                            required
-                            autoFocus
-                            style={{ letterSpacing: '2px', fontWeight: 700, fontSize: 18, textAlign: 'center' }}
-                            maxLength={12}
-                        />
-                    </div>
-
-                    <div className="auth-field">
-                        <label>Şifre</label>
-                        <div className="auth-pw-wrap">
-                            <input
-                                type={showPw ? 'text' : 'password'}
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
-                            <button type="button" onClick={() => setShowPw(!showPw)}>
-                                {showPw ? '🙈' : '👁'}
-                            </button>
-                        </div>
-                    </div>
-
-                    {error && <div className="auth-error">{error}</div>}
-
-                    <button
-                        type="submit"
-                        className="auth-btn"
-                        style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}
-                        disabled={loading}
-                    >
-                        {loading ? 'Giriş yapılıyor...' : '🚗 Sürücü Paneline Gir'}
-                    </button>
-                </form>
-
-                <div className="auth-info-box">
-                    <p>💡 <b>Şifrenizi mi unuttunuz?</b></p>
-                    <p>Şirketinizin filo yöneticisiyle iletişime geçin.</p>
-                </div>
-
-                <div className="auth-divider"><span>diğer giriş seçenekleri</span></div>
-
-                <div className="auth-other-logins">
-                    <Link href="/login" className="auth-link-btn">🏢 Şirket Girişi</Link>
-                    <Link href="/login/service" className="auth-link-btn">🔧 Oto Servis Girişi</Link>
-                </div>
-
-                <Link href="/" className="auth-back">← Ana Sayfaya Dön</Link>
-            </div>
-
-            <style>{authStyles}</style>
+        <div className="auth-header">
+          <div className="auth-type-badge" style={{ background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.2)', color: '#34d399' }}>
+            🚗 Sürücü Girişi
+          </div>
+          <h1 className="auth-title">Plaka ile Giriş</h1>
+          <p className="auth-subtitle">Araç plakanız ve şifrenizle giriş yapın</p>
         </div>
-    );
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="auth-field">
+            <label>Araç Plakası</label>
+            <input
+              type="text"
+              placeholder="34 ABC 123"
+              value={plateNumber}
+              onChange={(e) => setPlateNumber(formatPlate(e.target.value))}
+              required
+              autoFocus
+              style={{ letterSpacing: '2px', fontWeight: 700, fontSize: 18, textAlign: 'center' }}
+              maxLength={12}
+            />
+          </div>
+
+          <div className="auth-field">
+            <label>Şifre</label>
+            <div className="auth-pw-wrap">
+              <input
+                type={showPw ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button type="button" onClick={() => setShowPw(!showPw)}>
+                {showPw ? '🙈' : '👁'}
+              </button>
+            </div>
+          </div>
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button
+            type="submit"
+            className="auth-btn"
+            style={{ background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}
+            disabled={loading}
+          >
+            {loading ? 'Giriş yapılıyor...' : '🚗 Sürücü Paneline Gir'}
+          </button>
+        </form>
+
+        <div className="auth-info-box">
+          <p>💡 <b>Şifrenizi mi unuttunuz?</b></p>
+          <p>Şirketinizin filo yöneticisiyle iletişime geçin.</p>
+        </div>
+
+        <div className="auth-divider"><span>diğer giriş seçenekleri</span></div>
+
+        <div className="auth-other-logins">
+          <Link href="/login" className="auth-link-btn">🏢 Şirket Girişi</Link>
+          <Link href="/login/service" className="auth-link-btn">🔧 Oto Servis Girişi</Link>
+        </div>
+
+        <Link href="/" className="auth-back">← Ana Sayfaya Dön</Link>
+      </div>
+
+      <style>{authStyles}</style>
+    </div>
+  );
 }
 
 const authStyles = `

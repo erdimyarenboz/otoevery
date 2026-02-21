@@ -23,12 +23,23 @@ router.get('/vehicles', async (req: AuthRequest, res: Response) => {
 
 // POST /api/v1/company/vehicles — Add vehicle
 router.post('/vehicles', async (req: AuthRequest, res: Response) => {
-    const { plate, brand, model, year, color, fuelType, currentKm } = req.body;
+    const { plate, brand, model, year, color, fuelType, vehicleType, workingRegion, currentKm } = req.body;
     if (!plate) {
         return res.status(400).json({ success: false, message: 'Plaka gerekli' });
     }
     const vehicle = await prisma.vehicle.create({
-        data: { plate, brand, model, year, color, fuelType, currentKm: currentKm || 0, companyId: req.user!.companyId! },
+        data: {
+            plate,
+            brand,
+            model,
+            year,
+            color,
+            fuelType,
+            vehicleType: vehicleType || 'car',
+            workingRegion,
+            currentKm: currentKm || 0,
+            companyId: req.user!.companyId!
+        },
     });
     return res.status(201).json({ success: true, data: vehicle });
 });
@@ -201,5 +212,161 @@ router.get('/credits/history', async (req: AuthRequest, res: Response) => {
     return res.json({ success: true, data: transactions });
 });
 
-export default router;
+// ── PROFILE ───────────────────────────────────────────────
 
+// GET /api/v1/company/profile
+router.get('/profile', async (req: AuthRequest, res: Response) => {
+    const companyId = req.user!.companyId!;
+    const company = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: {
+            id: true, name: true, slug: true, address: true,
+            contactEmail: true, contactPhone: true, logoUrl: true,
+            taxOffice: true, taxNumber: true, creditBalance: true,
+        },
+    });
+    return res.json({ success: true, data: company });
+});
+
+// PUT /api/v1/company/profile
+router.put('/profile', async (req: AuthRequest, res: Response) => {
+    const companyId = req.user!.companyId!;
+    const { address, contactEmail, contactPhone, taxOffice, taxNumber } = req.body;
+    const company = await prisma.company.update({
+        where: { id: companyId },
+        data: {
+            ...(address !== undefined && { address }),
+            ...(contactEmail !== undefined && { contactEmail }),
+            ...(contactPhone !== undefined && { contactPhone }),
+            ...(taxOffice !== undefined && { taxOffice }),
+            ...(taxNumber !== undefined && { taxNumber }),
+        },
+    });
+    return res.json({ success: true, data: company, message: 'Profil güncellendi' });
+});
+
+// ── SERVICE RIGHTS ─────────────────────────────────────────
+
+const SERVICE_TYPE_LABELS: Record<string, string> = {
+    wash_standard: 'Standart Oto Yıkama',
+    wash_light_commercial: 'Hafif Ticari Oto Yıkama',
+    wash_suv: 'SUV Oto Yıkama',
+    wash_commercial: 'Ticari Oto Yıkama',
+    wash_minibus: 'Minibüs Oto Yıkama',
+    tire_repair: 'Lastik Tamiri',
+    tire_change_4x2: '4x2 Lastik Değişimi',
+    tire_change_4x4: '4x4 Lastik Değişimi',
+    maintenance_petrol: 'Benzinli Araç Oto Bakım',
+    maintenance_diesel: 'Dizel Araç Oto Bakım',
+};
+
+// GET /api/v1/company/vehicles/:vehicleId/rights
+router.get('/vehicles/:vehicleId/rights', async (req: AuthRequest, res: Response) => {
+    const { vehicleId } = req.params;
+    const rights = await prisma.vehicleServiceRight.findMany({
+        where: { vehicleId },
+        orderBy: { serviceType: 'asc' },
+    });
+    return res.json({ success: true, data: rights, labels: SERVICE_TYPE_LABELS });
+});
+
+// POST /api/v1/company/credits/allocate-right
+// Allocates a service right to a vehicle and deducts cost from company balance
+router.post('/credits/allocate-right', async (req: AuthRequest, res: Response) => {
+    const companyId = req.user!.companyId!;
+    const { vehicleId, serviceType, quantity } = req.body;
+
+    if (!vehicleId || !serviceType || !quantity || quantity < 1) {
+        return res.status(400).json({ success: false, message: 'Araç, hizmet türü ve adet girilmeli' });
+    }
+
+    const vehicle = await prisma.vehicle.findFirst({ where: { id: vehicleId, companyId } });
+    if (!vehicle) return res.status(404).json({ success: false, message: 'Araç bulunamadı' });
+
+    // Find unit price for this company (company-specific first, then default)
+    let pricing = await prisma.servicePricing.findFirst({
+        where: { companyId, serviceType, isActive: true },
+    });
+    if (!pricing) {
+        pricing = await prisma.servicePricing.findFirst({
+            where: { companyId: null, serviceType, isActive: true },
+        });
+    }
+
+    const unitPrice = pricing?.price ?? 0;
+    const totalPoints = unitPrice * Number(quantity); // Use price as point equivalent
+    const totalCost = totalPoints; // For now, 1 point = ₺1 for company bakiye deduction
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) return res.status(404).json({ success: false, message: 'Şirket bulunamadı' });
+    if (company.creditBalance < totalCost) {
+        return res.status(400).json({ success: false, message: 'Yetersiz bakiye' });
+    }
+
+    // Upsert service right record
+    const existingRight = await prisma.vehicleServiceRight.findFirst({
+        where: { vehicleId, serviceType },
+    });
+
+    await prisma.$transaction([
+        existingRight
+            ? prisma.vehicleServiceRight.update({
+                where: { id: existingRight.id },
+                data: {
+                    quantity: existingRight.quantity + Number(quantity),
+                    points: existingRight.points + totalPoints // Increment points
+                },
+            })
+            : prisma.vehicleServiceRight.create({
+                data: {
+                    vehicleId,
+                    serviceType,
+                    quantity: Number(quantity),
+                    points: totalPoints // Initialize points
+                },
+            }),
+        prisma.company.update({
+            where: { id: companyId },
+            data: { creditBalance: { decrement: totalCost } },
+        }),
+        prisma.creditTransaction.create({
+            data: {
+                type: 'right_allocate',
+                amount: totalCost,
+                companyId,
+                vehicleId,
+                serviceType,
+                description: `${vehicle.plate} – ${SERVICE_TYPE_LABELS[serviceType] || serviceType} x${quantity} yüklendi (${totalPoints} puan/kredi)`,
+            },
+        }),
+    ]);
+
+    return res.json({ success: true, message: `${SERVICE_TYPE_LABELS[serviceType] || serviceType} x${quantity} adet yüklendi (${totalPoints} puan)` });
+});
+
+// ── SUPPORT TICKETS (Company) ─────────────────────────────
+
+// GET /api/v1/company/tickets
+router.get('/tickets', async (req: AuthRequest, res: Response) => {
+    const companyId = req.user!.companyId!;
+    const tickets = await prisma.supportTicket.findMany({
+        where: { companyId },
+        orderBy: { createdAt: 'desc' },
+    });
+    return res.json({ success: true, data: tickets });
+});
+
+// POST /api/v1/company/tickets
+router.post('/tickets', async (req: AuthRequest, res: Response) => {
+    const companyId = req.user!.companyId!;
+    const { subject, message, category } = req.body;
+    if (!subject || !message) {
+        return res.status(400).json({ success: false, message: 'Konu ve mesaj gerekli' });
+    }
+    const ticket = await prisma.supportTicket.create({
+        data: { companyId, subject, message, category: category || 'request' },
+    });
+    return res.status(201).json({ success: true, data: ticket, message: 'Çağrı oluşturuldu' });
+});
+
+export default router;

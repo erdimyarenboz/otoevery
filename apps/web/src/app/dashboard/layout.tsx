@@ -20,6 +20,7 @@ const NAV_ITEMS = [
     },
     {
         section: 'Finansal', items: [
+            { href: '/dashboard/rights-tracking', icon: '📊', label: 'Hak & Kullanım Takibi' },
             { href: '/dashboard/fuel', icon: '⛽', label: 'Yakıt Kayıtları' },
             { href: '/dashboard/expenses', icon: '💰', label: 'Giderler' },
             { href: '/dashboard/penalties', icon: '🚨', label: 'Cezalar' },
@@ -71,8 +72,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <aside className="sidebar">
                 <div className="sidebar-header">
                     <div className="sidebar-logo">
-                        <div className="logo-icon">OE</div>
-                        <span className="logo-text">OtoEvery</span>
+                        <img src="/logo.png" alt="OtoEvery" style={{ height: 40, width: 'auto' }} />
                     </div>
                 </div>
 
@@ -117,6 +117,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                         {pathname === '/dashboard/vehicles' && 'Araç Yönetimi'}
                         {pathname === '/dashboard/employees' && 'Çalışan Yönetimi'}
                         {pathname === '/dashboard/assignments' && 'Zimmet Yönetimi'}
+                        {pathname === '/dashboard/rights-tracking' && 'Hak & Kullanım Takibi'}
                         {pathname === '/dashboard/fuel' && 'Yakıt Kayıtları'}
                         {pathname === '/dashboard/expenses' && 'Gider Yönetimi'}
                         {pathname === '/dashboard/penalties' && 'Ceza Takibi'}

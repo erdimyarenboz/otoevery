@@ -8,6 +8,8 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+
+
 // ─── USERS ──────────────────────────────────────────────
 // Unified user table for all 4 roles
 model User {
@@ -53,12 +55,18 @@ model Company {
   logoUrl        String?
   creditBalance  Float    @default(0) // Loaded by Super Admin
   isActive       Boolean  @default(true)
+  taxOffice      String?  // Vergi Dairesi
+  taxNumber      String?  // Vergi Numarası
+  contractFee    Float?
+  contractMonths Int?
 
   // Relations
   vehicles           Vehicle[]
   users              User[]
   agreements         Agreement[]
   creditTransactions CreditTransaction[]
+  servicePricings    ServicePricing[]
+  supportTickets     SupportTicket[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -73,8 +81,10 @@ model Vehicle {
   year           Int?
   color          String?
   fuelType       String?
+  vehicleType    String   @default("car") // car | lcv | suv | cargo | minibus
+  workingRegion  String?  // e.g., "İstanbul - Anadolu Yakası"
   currentKm      Int      @default(0)
-  creditBalance  Float    @default(0) // Allocated by Company Manager
+  creditBalance  Float    @default(0) // Allocated by Company Manager (Legacy/General)
   status         String   @default("active")  // active | passive | maintenance | sold
   notes          String?
 
@@ -85,6 +95,7 @@ model Vehicle {
   transactions Transaction[]
   penalties    Penalty[]
   creditTransactions CreditTransaction[]
+  serviceRights VehicleServiceRight[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -103,6 +114,7 @@ model ServiceCenter {
   longitude    Float?
   workingHours String?  // e.g. "08:00 - 20:00"
   contactEmail String?
+  contactName  String?  // Yetkili Adı Soyadı
   phone        String?
   logoUrl      String?
   description  String?  // ne üzerine çalıştığı
@@ -119,6 +131,7 @@ model ServiceCenter {
   qrCodes            QrCode[]
   payouts            Payout[]
   creditTransactions CreditTransaction[]
+  servicePricings    ServicePricing[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -173,6 +186,7 @@ model Transaction {
   description     String?
   status          String   @default("completed") // pending | completed | cancelled | refunded
   qrPaymentRef    String?  // QR payment reference
+  serviceType     String?
 
   // Relations
   vehicleId       String
@@ -230,11 +244,68 @@ model QrCode {
   @@index([serviceCenterId])
 }
 
+// ─── SERVICE PRICING ────────────────────────────────────
+model ServicePricing {
+  id              String   @id @default(uuid())
+  serviceCenterId String
+  serviceCenter   ServiceCenter @relation(fields: [serviceCenterId], references: [id])
+
+  companyId       String?
+  company         Company? @relation(fields: [companyId], references: [id])
+
+  serviceType     String
+  price           Float
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([serviceCenterId])
+  @@index([companyId])
+  @@index([serviceType])
+}
+
+// ─── VEHICLE SERVICE RIGHTS ─────────────────────────────
+model VehicleServiceRight {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  serviceType String
+  quantity    Int      @default(0) // Number of uses (if applicable)
+  points      Float    @default(0) // Points/Credits bucket for this right (new requirement)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([vehicleId, serviceType])
+  @@index([vehicleId])
+}
+
+// ─── SUPPORT TICKETS ────────────────────────────────────
+model SupportTicket {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+
+  subject     String
+  message     String
+  category    String   @default("request") // request | suggestion | complaint
+  status      String   @default("open")    // open | in_progress | closed
+  adminReply  String?
+  closedAt    DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+}
+
 // ─── CREDIT TRANSACTIONS ────────────────────────────────
 // Tracks all credit movements: load (admin→company), allocate (company→vehicle), spend (vehicle→service)
 model CreditTransaction {
   id              String   @id @default(uuid())
-  type            String   // load | allocate | spend
+  type            String   // load | allocate | spend | right_allocate
   amount          Float
   description     String?
 
@@ -251,7 +322,6 @@ model CreditTransaction {
   serviceCenterId String?
   serviceCenter   ServiceCenter? @relation(fields: [serviceCenterId], references: [id])
 
-  // For 'spend': what service type was used (wash | maintenance | tire)
   serviceType     String?
 
   createdAt       DateTime @default(now())

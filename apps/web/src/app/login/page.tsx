@@ -6,106 +6,105 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
 const ROLE_REDIRECTS: Record<string, string> = {
-    SUPER_ADMIN: '/admin',
-    COMPANY_MANAGER: '/company',
-    DRIVER: '/driver',
-    SERVICE_CENTER: '/service',
+  SUPER_ADMIN: '/admin',
+  COMPANY_MANAGER: '/company',
+  DRIVER: '/driver',
+  SERVICE_CENTER: '/service',
 };
 
 export default function CompanyLoginPage() {
-    const router = useRouter();
-    const { login } = useAuth();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPw, setShowPw] = useState(false);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        const res = await login({ email, password });
-        if (res.success) {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            router.push(ROLE_REDIRECTS[user.role] || '/company');
-        } else {
-            setError(res.message || 'E-posta veya şifre hatalı');
-        }
-        setLoading(false);
-    };
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const res = await login({ email, password });
+    if (res.success) {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      router.push(ROLE_REDIRECTS[user.role] || '/company');
+    } else {
+      setError(res.message || 'E-posta veya şifre hatalı');
+    }
+    setLoading(false);
+  };
 
-    return (
-        <div className="auth-page">
-            <div className="auth-glow-1" />
-            <div className="auth-glow-2" />
+  return (
+    <div className="auth-page">
+      <div className="auth-glow-1" />
+      <div className="auth-glow-2" />
 
-            <div className="auth-card">
-                {/* Logo */}
-                <Link href="/" className="auth-logo">
-                    <div className="auth-logo-icon">OE</div>
-                    <span className="auth-logo-text">OtoEvery</span>
-                </Link>
+      <div className="auth-card">
+        {/* Logo */}
+        <Link href="/" className="auth-logo">
+          <img src="/logo.png" alt="OtoEvery" style={{ height: 56 }} />
+        </Link>
 
-                <div className="auth-header">
-                    <div className="auth-type-badge">🏢 Şirket Girişi</div>
-                    <h1 className="auth-title">Hoş Geldiniz</h1>
-                    <p className="auth-subtitle">Şirket panelinize giriş yapın</p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="auth-form">
-                    <div className="auth-field">
-                        <label>E-posta Adresi</label>
-                        <input
-                            type="email"
-                            placeholder="ad@sirketiniz.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            autoFocus
-                        />
-                    </div>
-
-                    <div className="auth-field">
-                        <label>Şifre</label>
-                        <div className="auth-pw-wrap">
-                            <input
-                                type={showPw ? 'text' : 'password'}
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
-                            <button type="button" onClick={() => setShowPw(!showPw)}>
-                                {showPw ? '🙈' : '👁'}
-                            </button>
-                        </div>
-                    </div>
-
-                    {error && <div className="auth-error">{error}</div>}
-
-                    <button type="submit" className="auth-btn" disabled={loading}>
-                        {loading ? 'Giriş yapılıyor...' : 'Giriş Yap →'}
-                    </button>
-                </form>
-
-                <div className="auth-divider"><span>diğer giriş seçenekleri</span></div>
-
-                <div className="auth-other-logins">
-                    <Link href="/login/service" className="auth-link-btn">
-                        🔧 Oto Servis Girişi
-                    </Link>
-                    <Link href="/login/driver" className="auth-link-btn">
-                        🚗 Sürücü Girişi (Plaka)
-                    </Link>
-                </div>
-
-                <Link href="/" className="auth-back">← Ana Sayfaya Dön</Link>
-            </div>
-
-            <style>{authStyles}</style>
+        <div className="auth-header">
+          <div className="auth-type-badge">🏢 Şirket Girişi</div>
+          <h1 className="auth-title">Hoş Geldiniz</h1>
+          <p className="auth-subtitle">Şirket panelinize giriş yapın</p>
         </div>
-    );
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="auth-field">
+            <label>E-posta Adresi</label>
+            <input
+              type="email"
+              placeholder="ad@sirketiniz.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="auth-field">
+            <label>Şifre</label>
+            <div className="auth-pw-wrap">
+              <input
+                type={showPw ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button type="button" onClick={() => setShowPw(!showPw)}>
+                {showPw ? '🙈' : '👁'}
+              </button>
+            </div>
+          </div>
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? 'Giriş yapılıyor...' : 'Giriş Yap →'}
+          </button>
+        </form>
+
+        <div className="auth-divider"><span>diğer giriş seçenekleri</span></div>
+
+        <div className="auth-other-logins">
+          <Link href="/login/service" className="auth-link-btn">
+            🔧 Oto Servis Girişi
+          </Link>
+          <Link href="/login/driver" className="auth-link-btn">
+            🚗 Sürücü Girişi (Plaka)
+          </Link>
+        </div>
+
+        <Link href="/" className="auth-back">← Ana Sayfaya Dön</Link>
+      </div>
+
+      <style>{authStyles}</style>
+    </div>
+  );
 }
 
 const authStyles = `

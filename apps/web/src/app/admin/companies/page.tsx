@@ -11,6 +11,8 @@ interface Company {
     contactEmail: string;
     contactPhone: string;
     creditBalance: number;
+    taxOffice?: string;
+    taxNumber?: string;
     contractFee?: number;
     contractMonths?: number;
     createdAt: string;
@@ -48,7 +50,7 @@ export default function AdminCompaniesPage() {
     const [detailTab, setDetailTab] = useState<'overview' | 'vehicles' | 'transactions'>('overview');
     const [detailLoading, setDetailLoading] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newCompany, setNewCompany] = useState({ name: '', slug: '', address: '', contactEmail: '', contactPhone: '', contractFee: '', contractMonths: '' });
+    const [newCompany, setNewCompany] = useState({ name: '', slug: '', address: '', contactEmail: '', contactPhone: '', contractFee: '', contractMonths: '', taxOffice: '', taxNumber: '' });
     const [saving, setSaving] = useState(false);
     const [search, setSearch] = useState('');
 
@@ -89,7 +91,7 @@ export default function AdminCompaniesPage() {
         });
         if (res.success) {
             setShowAddModal(false);
-            setNewCompany({ name: '', slug: '', address: '', contactEmail: '', contactPhone: '', contractFee: '', contractMonths: '' });
+            setNewCompany({ name: '', slug: '', address: '', contactEmail: '', contactPhone: '', contractFee: '', contractMonths: '', taxOffice: '', taxNumber: '' });
             loadCompanies();
         }
         setSaving(false);
@@ -279,6 +281,8 @@ export default function AdminCompaniesPage() {
                                             ['Şirket Adı', selected.name],
                                             ['Sözleşme Ücreti', selected.contractFee ? `₺${Number(selected.contractFee).toLocaleString('tr-TR')}` : '—'],
                                             ['Anlaşma Süresi', selected.contractMonths ? `${selected.contractMonths} ay` : '—'],
+                                            ['Vergi Dairesi', selected.taxOffice || '—'],
+                                            ['Vergi Numarası', selected.taxNumber || '—'],
                                             ['E-posta', selected.contactEmail || '—'],
                                             ['Telefon', selected.contactPhone || '—'],
                                             ['Adres', selected.address || '—'],
@@ -350,6 +354,8 @@ export default function AdminCompaniesPage() {
                                 { label: 'Adres', key: 'address', placeholder: 'İstanbul' },
                                 { label: 'E-posta', key: 'contactEmail', placeholder: 'info@sirket.com' },
                                 { label: 'Telefon', key: 'contactPhone', placeholder: '0212 555 0000' },
+                                { label: 'Vergi Dairesi', key: 'taxOffice', placeholder: 'Boğaziçi V.D.' },
+                                { label: 'Vergi Numarası', key: 'taxNumber', placeholder: '1234567890' },
                                 { label: 'Sözleşme Ücreti (₺)', key: 'contractFee', placeholder: '5000' },
                                 { label: 'Anlaşma Süresi (ay)', key: 'contractMonths', placeholder: '12' },
                             ].map(f => (
